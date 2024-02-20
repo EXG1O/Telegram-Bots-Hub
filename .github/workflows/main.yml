@@ -1,0 +1,25 @@
+name: Main CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: 3.11.6
+
+      - name: Install requirements
+        run: |
+          pip install -U pip
+          pip install -r requirements.txt
+
+      - name: Run mypy
+        run: mypy .
