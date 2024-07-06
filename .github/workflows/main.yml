@@ -17,6 +17,9 @@ jobs:
         with:
           python-version: 3.12
 
+      - name: Create Python virtual environment
+        run: python -m venv env
+
       - name: Install Python requirements
         run: |
           source ./env/bin/activate
