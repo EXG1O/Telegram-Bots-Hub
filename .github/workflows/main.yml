@@ -9,17 +9,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Check out repository
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
-          python-version: 3.11.6
+          python-version: 3.12
 
-      - name: Install requirements
+      - name: Install Python requirements
         run: |
+          source ./env/bin/activate
           pip install -U pip
-          pip install -r requirements.txt
+          pip install poetry
+          poetry install
+
+      - name: Run ruff
+        run: |
+          ./env/bin/ruff check .
+          ./env/bin/ruff format --check .
 
       - name: Run mypy
-        run: mypy .
+        run: ./env/bin/mypy .

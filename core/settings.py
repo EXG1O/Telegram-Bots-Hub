@@ -1,6 +1,5 @@
 from argparse import ArgumentParser, Namespace
 
-
 parser = ArgumentParser()
 parser.add_argument('--port', type=int, required=True)
 parser.add_argument('--service-token', required=True)

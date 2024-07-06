@@ -1,38 +1,49 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-import uvicorn
 
 from aiogram.utils.token import TokenValidationError
 
-from core import settings, dispatcher
+import uvicorn
+
+from core import dispatcher, settings
 from core.exceptions import (
-	NoSpaceToStartBot,
-	NotFoundBot,
-	BotAlreadyEnabled,
+	BotAlreadyEnabledError,
+	NoSpaceForStartBotError,
+	NotFoundBotError,
 )
 from core.routes import bots
 
 from typing import Any
 
-
 app = FastAPI(title='Telegram Bots Hub')
 app.include_router(bots.router)
 
 
-@app.exception_handler(NoSpaceToStartBot)
-def no_space_to_start_bot_exception_handler(request: Request, exception: NoSpaceToStartBot) -> JSONResponse:
+@app.exception_handler(NoSpaceForStartBotError)
+def no_space_to_start_bot_exception_handler(
+	request: Request, exception: NoSpaceForStartBotError
+) -> JSONResponse:
 	return JSONResponse({'code': 'no_space_to_start_bot'}, 400)
 
-@app.exception_handler(NotFoundBot)
-def not_found_bot_exception_handler(request: Request, exception: NotFoundBot) -> JSONResponse:
+
+@app.exception_handler(NotFoundBotError)
+def not_found_bot_exception_handler(
+	request: Request, exception: NotFoundBotError
+) -> JSONResponse:
 	return JSONResponse({'code': 'not_found_bot'}, 400)
 
-@app.exception_handler(BotAlreadyEnabled)
-def bot_already_enabled_exception_handler(request: Request, exception: NoSpaceToStartBot) -> JSONResponse:
+
+@app.exception_handler(BotAlreadyEnabledError)
+def bot_already_enabled_exception_handler(
+	request: Request, exception: NoSpaceForStartBotError
+) -> JSONResponse:
 	return JSONResponse({'code': 'bot_already_enabled'}, 400)
 
+
 @app.exception_handler(TokenValidationError)
-def token_validation_error_exception_handler(request: Request, exception: TokenValidationError) -> JSONResponse:
+def token_validation_error_exception_handler(
+	request: Request, exception: TokenValidationError
+) -> JSONResponse:
 	return JSONResponse({'code': 'invalid_bot_token'}, 400)
 
 

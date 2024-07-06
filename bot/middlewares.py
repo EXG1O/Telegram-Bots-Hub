@@ -1,11 +1,11 @@
 from aiogram import BaseMiddleware
-from aiogram.types import TelegramObject, Update, Message, CallbackQuery, User
+from aiogram.types import CallbackQuery, Message, TelegramObject, Update, User
 
 from service.types import ServiceBot, ServiceBotCommand, ServiceBotUser
 
-from typing import TYPE_CHECKING, TypeVar, Callable, Awaitable, Any
+from collections.abc import Awaitable, Callable
+from typing import TYPE_CHECKING, Any, TypeVar
 import asyncio
-
 
 if TYPE_CHECKING:
 	from .bot import Bot
@@ -18,7 +18,9 @@ Handler = Callable[[TelegramObject, dict[str, Any]], Awaitable[Any]]
 
 
 class CreateUserMiddleware(BaseMiddleware):
-	async def __call__(self, handler: Handler, event: Update, data: dict[str, Any]) -> Any: # type: ignore [override]
+	async def __call__(  # type: ignore [override]
+		self, handler: Handler, event: Update, data: dict[str, Any]
+	) -> Any:
 		event_from_user: User | None = data.get('event_from_user')
 
 		if event_from_user:
@@ -31,8 +33,11 @@ class CreateUserMiddleware(BaseMiddleware):
 
 			return await handler(event, data)
 
+
 class CheckUserPermissionsMiddleware(BaseMiddleware):
-	async def __call__(self, handler: Handler, event: Update, data: dict[str, Any]) -> Any: # type: ignore [override]
+	async def __call__(  # type: ignore [override]
+		self, handler: Handler, event: Update, data: dict[str, Any]
+	) -> Any:
 		bot: Bot = data['bot']
 		_bot: ServiceBot = await bot.api.get_bot()
 		user: ServiceBotUser = data['service_bot_user']
@@ -40,6 +45,7 @@ class CheckUserPermissionsMiddleware(BaseMiddleware):
 		match (_bot.is_private, user.is_allowed, user.is_blocked):
 			case (True, True, False) | (False, _, False):
 				return await handler(event, data)
+
 
 class SearchCommandMiddleware(BaseMiddleware):
 	async def search_command_by_text(
@@ -81,7 +87,9 @@ class SearchCommandMiddleware(BaseMiddleware):
 
 		return None
 
-	async def __call__(self, handler: Handler, event: Update, data: dict[str, Any]) -> Any: # type: ignore [override]
+	async def __call__(  # type: ignore [override]
+		self, handler: Handler, event: Update, data: dict[str, Any]
+	) -> Any:
 		bot: Bot = data['bot']
 		commands = await bot.api.get_bot_commands()
 		found_command: ServiceBotCommand | None = None
@@ -94,7 +102,9 @@ class SearchCommandMiddleware(BaseMiddleware):
 			)
 			found_command = text_search_result or keyboard_search_result
 		elif isinstance(event.event, CallbackQuery) and event.event.data:
-			found_command = await self.search_command_by_keyboard_buttons_id(bot, int(event.event.data), commands)
+			found_command = await self.search_command_by_keyboard_buttons_id(
+				bot, int(event.event.data), commands
+			)
 
 		if found_command:
 			data['command'] = found_command

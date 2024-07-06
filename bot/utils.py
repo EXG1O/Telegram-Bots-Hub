@@ -1,15 +1,17 @@
-from bs4 import BeautifulSoup, Tag, NavigableString
+from bs4 import BeautifulSoup, NavigableString, Tag
+
 from typing import Any
 import re
 
-
 ProcessedNestedData = dict[str, str | int]
 
-nested_data_types: tuple = (str, int)
-nested_data_iterable_types: tuple = (dict, list, tuple)
+nested_data_types = (str, int)
+nested_data_iterable_types = (dict, list, tuple)
 
 
-async def _process_nested_data(root_key: str, data: dict[str, Any] | list | tuple) -> ProcessedNestedData:
+async def _process_nested_data(
+	root_key: str, data: dict[str, Any] | list[Any] | tuple[Any, ...]
+) -> ProcessedNestedData:
 	result: ProcessedNestedData = {}
 
 	for key, value in data.items() if isinstance(data, dict) else enumerate(data):
@@ -22,14 +24,23 @@ async def _process_nested_data(root_key: str, data: dict[str, Any] | list | tupl
 
 	return result
 
+
 async def replace_text_variables(text: str, variables: dict[str, Any]) -> str:
 	for key, value in variables.items():
 		if isinstance(value, nested_data_types):
-			text = re.sub(r'\{\{\s*' + re.escape(key) + r'\s*\}\}', str(value), text, flags=re.IGNORECASE)
+			text = re.sub(
+				r'\{\{\s*' + re.escape(key) + r'\s*\}\}',
+				str(value),
+				text,
+				flags=re.IGNORECASE,
+			)
 		elif isinstance(value, nested_data_iterable_types):
-			text = await replace_text_variables(text, await _process_nested_data(key, value))
+			text = await replace_text_variables(
+				text, await _process_nested_data(key, value)
+			)
 
 	return text
+
 
 async def _process_element(root_element: Tag) -> str:
 	result = ''
@@ -37,8 +48,22 @@ async def _process_element(root_element: Tag) -> str:
 	for element in root_element.childGenerator():
 		if isinstance(element, Tag):
 			if element.name == 'a':
-				result += f'<a href="{element["href"]}">{await _process_element(element)}</a>'
-			elif element.name in ('b', 'strong', 'i', 'em', 'u', 'ins', 's', 'strike', 'del', 'tg-spoiler', 'code'):
+				result += (
+					f'<a href="{element["href"]}">{await _process_element(element)}</a>'
+				)
+			elif element.name in (
+				'b',
+				'strong',
+				'i',
+				'em',
+				'u',
+				'ins',
+				's',
+				'strike',
+				'del',
+				'tg-spoiler',
+				'code',
+			):
 				result += f'<{element.name}>{await _process_element(element)}</{element.name}>'
 			else:
 				result += await _process_element(element)
@@ -46,6 +71,7 @@ async def _process_element(root_element: Tag) -> str:
 			result += element
 
 	return result
+
 
 async def process_text_with_html_tags(text: str) -> str:
 	soup = BeautifulSoup(text, 'lxml')

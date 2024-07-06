@@ -1,26 +1,27 @@
 from aiogram import Bot as BaseBot
 from aiogram.exceptions import (
-	TelegramRetryAfter,
-	TelegramNetworkError,
-	TelegramServerError,
-	TelegramForbiddenError,
 	RestartingTelegram,
-	TelegramNotFound,
-	TelegramMigrateToChat,
 	TelegramEntityTooLarge,
+	TelegramForbiddenError,
+	TelegramMigrateToChat,
+	TelegramNetworkError,
+	TelegramNotFound,
+	TelegramRetryAfter,
+	TelegramServerError,
 )
 from aiogram.methods import TelegramMethod
 from aiogram.types import (
 	BotCommand as BotMenuCommand,
-	Chat,
-	User,
-	Message,
+)
+from aiogram.types import (
 	CallbackQuery,
-	ReplyKeyboardMarkup,
+	Chat,
 	InlineKeyboardMarkup,
-	BufferedInputFile,
-	InputMediaPhoto,
 	InputMediaDocument,
+	InputMediaPhoto,
+	Message,
+	ReplyKeyboardMarkup,
+	User,
 )
 
 from service import API
@@ -28,16 +29,15 @@ from service.types import ServiceBotCommand
 
 from .dispatcher import Dispatcher
 from .middlewares import (
-	CreateUserMiddleware,
 	CheckUserPermissionsMiddleware,
+	CreateUserMiddleware,
 	SearchCommandMiddleware,
 )
 
-from typing import TypeVar, Any
+from typing import Any, TypeVar
 import asyncio
-import string
 import re
-
+import string
 
 T = TypeVar('T')
 
@@ -52,9 +52,11 @@ class Bot(BaseBot):
 		self.dispatcher = Dispatcher()
 		self.last_messages: dict[int, list[Message]] = {}
 
-	async def __call__(self, method: TelegramMethod[T], *args: Any, **kwargs: Any) -> T | None: # type: ignore [override]
+	async def __call__(  # type: ignore [override]
+		self, method: TelegramMethod[T], *args: Any, **kwargs: Any
+	) -> T | None:
 		try:
-			result: T | None = await super().__call__(method, *args, **kwargs) # type: ignore [arg-type]
+			result: T | None = await super().__call__(method, *args, **kwargs)  # type: ignore [arg-type]
 		except TelegramRetryAfter as exception:
 			await asyncio.sleep(exception.retry_after)
 			await self.__call__(method, *args, **kwargs)
@@ -73,11 +75,13 @@ class Bot(BaseBot):
 			if isinstance(result, list):
 				for instance in result:
 					if isinstance(instance, Message):
-						self.last_messages.setdefault(instance.chat.id, []).append(instance)
+						self.last_messages.setdefault(instance.chat.id, []).append(
+							instance
+						)
 			elif isinstance(result, Message):
 				self.last_messages.setdefault(result.chat.id, []).append(result)
 
-		return result # type: ignore [return-value]
+		return result  # type: ignore [return-value]
 
 	async def get_last_messages(self, chat_id: int) -> list[Message]:
 		return self.last_messages.setdefault(chat_id, [])
@@ -149,7 +153,7 @@ class Bot(BaseBot):
 				**kwargs,
 			)
 		elif len(images) > 1 and len(files) == 1:
-			await event.answer_media_group(images, **kwargs) # type: ignore [arg-type]
+			await event.answer_media_group(images, **kwargs)  # type: ignore [arg-type]
 			await event.answer_document(
 				files[0].media,
 				caption=command.message_text.text,
@@ -157,7 +161,7 @@ class Bot(BaseBot):
 				**kwargs,
 			)
 		elif len(images) == 1 and len(files) > 1:
-			await event.answer_media_group(files, **kwargs) # type: ignore [arg-type]
+			await event.answer_media_group(files, **kwargs)  # type: ignore [arg-type]
 			await event.answer_photo(
 				images[0].media,
 				command.message_text.text,
@@ -165,8 +169,8 @@ class Bot(BaseBot):
 				**kwargs,
 			)
 		elif len(images) > 1 and len(files) > 1:
-			await event.answer_media_group(images, **kwargs) # type: ignore [arg-type]
-			await event.answer_media_group(files, **kwargs) # type: ignore [arg-type]
+			await event.answer_media_group(images, **kwargs)  # type: ignore [arg-type]
+			await event.answer_media_group(files, **kwargs)  # type: ignore [arg-type]
 			await event.answer(
 				command.message_text.text,
 				reply_markup=keyboard,
@@ -234,7 +238,9 @@ class Bot(BaseBot):
 			if command.command and command.command.description is not None:
 				menu_commands.append(
 					BotMenuCommand(
-						command=re.sub(f'[{string.punctuation}]', '', command.command.text),
+						command=re.sub(
+							f'[{string.punctuation}]', '', command.command.text
+						),
 						description=command.command.description,
 					)
 				)
@@ -242,7 +248,9 @@ class Bot(BaseBot):
 		await self.set_my_commands(menu_commands)
 
 		self.dispatcher.update.outer_middleware.register(CreateUserMiddleware())
-		self.dispatcher.update.outer_middleware.register(CheckUserPermissionsMiddleware())
+		self.dispatcher.update.outer_middleware.register(
+			CheckUserPermissionsMiddleware()
+		)
 		self.dispatcher.update.outer_middleware.register(SearchCommandMiddleware())
 
 		self.dispatcher.message.register(self.message_handler)

@@ -1,12 +1,13 @@
-from aiogram import loggers, Dispatcher as BaseDispatcher
+from aiogram import Dispatcher as BaseDispatcher
+from aiogram import loggers
 from aiogram.methods import GetUpdates
-from aiogram.types import User, Update
+from aiogram.types import Update, User
 
 from core import dispatcher
 
-from typing import TYPE_CHECKING, AsyncGenerator, Coroutine, Any
+from collections.abc import AsyncGenerator, Coroutine
+from typing import TYPE_CHECKING, Any
 import asyncio
-
 
 if TYPE_CHECKING:
 	from .bot import Bot
@@ -15,7 +16,7 @@ else:
 
 
 class Dispatcher(BaseDispatcher):
-	async def _listen_updates(self, bot: Bot) -> AsyncGenerator[Update, None]: # type: ignore [override]
+	async def _listen_updates(self, bot: Bot) -> AsyncGenerator[Update, None]:  # type: ignore [override]
 		"""Endless updates reader"""
 
 		polling_timeout: int = 30
@@ -28,7 +29,7 @@ class Dispatcher(BaseDispatcher):
 		while True:
 			try:
 				updates = await bot(get_updates, **kwargs)
-			except:
+			except:  # noqa: E722
 				break
 
 			if updates is None:
@@ -39,7 +40,7 @@ class Dispatcher(BaseDispatcher):
 
 				get_updates.offset = update.update_id + 1
 
-	async def _polling(self, bot: Bot, **kwargs: Any) -> None: # type: ignore [override]
+	async def _polling(self, bot: Bot, **kwargs: Any) -> None:  # type: ignore [override]
 		user: User = await bot.me()
 
 		await dispatcher.set_bot_status(bot.service_id, 'online')
@@ -66,8 +67,12 @@ class Dispatcher(BaseDispatcher):
 
 		try:
 			async for update in self._listen_updates(bot):
-				handle_update: Coroutine[Any, Any, bool] = self._process_update(bot=bot, update=update, **kwargs)
-				handle_update_task: asyncio.Task[bool] = asyncio.create_task(handle_update)
+				handle_update: Coroutine[Any, Any, bool] = self._process_update(
+					bot=bot, update=update, **kwargs
+				)
+				handle_update_task: asyncio.Task[bool] = asyncio.create_task(
+					handle_update
+				)
 				self._handle_update_tasks.add(handle_update_task)
 				handle_update_task.add_done_callback(self._handle_update_tasks.discard)
 		finally:
@@ -80,7 +85,7 @@ class Dispatcher(BaseDispatcher):
 				user.full_name,
 			)
 
-	async def start_polling(self, bot: Bot) -> None: # type: ignore [override]
+	async def start_polling(self, bot: Bot) -> None:  # type: ignore [override]
 		"""Polling runner"""
 
 		return await super().start_polling(bot)

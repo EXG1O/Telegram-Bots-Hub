@@ -1,8 +1,10 @@
-class NoSpaceToStartBot(Exception):
+class NoSpaceForStartBotError(Exception):
 	pass
 
-class NotFoundBot(Exception):
+
+class NotFoundBotError(Exception):
 	pass
 
-class BotAlreadyEnabled(Exception):
+
+class BotAlreadyEnabledError(Exception):
 	pass

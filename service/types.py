@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import TypedDict, NotRequired, Literal
+from typing import Literal, NotRequired, TypedDict
 
 
 @dataclass
@@ -9,9 +9,11 @@ class ServiceBot:
 	is_enabled: bool
 	is_loading: bool
 
+
 class UpdateServiceBotData(TypedDict):
 	is_enabled: NotRequired[bool]
 	is_loading: NotRequired[bool]
+
 
 @dataclass
 class ServiceBotCommandSettings:
@@ -19,24 +21,29 @@ class ServiceBotCommandSettings:
 	is_delete_user_message: bool
 	is_send_as_new_message: bool
 
+
 @dataclass
 class ServiceBotCommandCommand:
 	text: str
 	description: str | None
+
 
 @dataclass
 class ServiceBotCommandImage:
 	name: str
 	url: str
 
+
 @dataclass
 class ServiceBotCommandFile:
 	name: str
 	url: str
 
+
 @dataclass
 class ServiceBotCommandMessageText:
 	text: str
+
 
 @dataclass
 class ServiceBotCommandKeyboardButton:
@@ -44,12 +51,13 @@ class ServiceBotCommandKeyboardButton:
 	row: int | None
 	text: str
 	url: str | None
-	telegram_Servicebot_command_id: int | None
+
 
 @dataclass
 class ServiceBotCommandKeyboard:
 	type: Literal['default', 'inline', 'payment']
 	buttons: list[ServiceBotCommandKeyboardButton]
+
 
 @dataclass
 class ServiceBotCommandAPIRequest:
@@ -58,9 +66,11 @@ class ServiceBotCommandAPIRequest:
 	headers: str | None
 	body: str | None
 
+
 @dataclass
 class ServiceBotCommandDatabaseRecord:
 	data: str
+
 
 @dataclass
 class ServiceBotCommand:
@@ -75,11 +85,13 @@ class ServiceBotCommand:
 	api_request: ServiceBotCommandAPIRequest | None
 	database_record: ServiceBotCommandDatabaseRecord | None
 
+
 @dataclass
 class ServiceBotVariable:
-    id: int
-    name: str
-    value: str
+	id: int
+	name: str
+	value: str
+
 
 @dataclass
 class ServiceBotUser:
