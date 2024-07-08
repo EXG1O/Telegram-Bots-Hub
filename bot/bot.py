@@ -1,4 +1,5 @@
 from aiogram import Bot as BaseBot
+from aiogram import Dispatcher
 from aiogram.exceptions import (
 	RestartingTelegram,
 	TelegramEntityTooLarge,
@@ -27,7 +28,6 @@ from aiogram.types import (
 from service import API
 from service.types import ServiceBotCommand
 
-from .dispatcher import Dispatcher
 from .middlewares import (
 	CheckUserPermissionsMiddleware,
 	CreateUserMiddleware,
