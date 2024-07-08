@@ -26,24 +26,26 @@ async def _process_nested_data(
 
 
 async def replace_text_variables(text: str, variables: dict[str, Any]) -> str:
+	result: str = text
+
 	for key, value in variables.items():
 		if isinstance(value, nested_data_types):
-			text = re.sub(
+			result = re.sub(
 				r'\{\{\s*' + re.escape(key) + r'\s*\}\}',
 				str(value),
-				text,
+				result,
 				flags=re.IGNORECASE,
 			)
 		elif isinstance(value, nested_data_iterable_types):
-			text = await replace_text_variables(
-				text, await _process_nested_data(key, value)
+			result = await replace_text_variables(
+				result, await _process_nested_data(key, value)
 			)
 
-	return text
+	return result
 
 
 async def _process_element(root_element: Tag) -> str:
-	result = ''
+	result: str = ''
 
 	for element in root_element.childGenerator():
 		if isinstance(element, Tag):
@@ -51,7 +53,7 @@ async def _process_element(root_element: Tag) -> str:
 				result += (
 					f'<a href="{element["href"]}">{await _process_element(element)}</a>'
 				)
-			elif element.name in (
+			elif element.name in [
 				'b',
 				'strong',
 				'i',
@@ -63,7 +65,7 @@ async def _process_element(root_element: Tag) -> str:
 				'del',
 				'tg-spoiler',
 				'code',
-			):
+			]:
 				result += f'<{element.name}>{await _process_element(element)}</{element.name}>'
 			else:
 				result += await _process_element(element)
@@ -75,15 +77,19 @@ async def _process_element(root_element: Tag) -> str:
 
 async def process_text_with_html_tags(text: str) -> str:
 	soup = BeautifulSoup(text, 'lxml')
-	result = ''
+	result: str = ''
 
-	for element in soup.find_all(('p', 'pre', 'blockquote')):
-		if isinstance(element, Tag):
-			if element.name == 'p':
-				result += f'{await _process_element(element)}\n'
-			elif element.name == 'blockquote':
-				result += f'<{element.name}>{await _process_element(element)}</{element.name}>\n'
-			elif element.name == 'pre':
-				result += f'<{element.name}>{element.get_text()}</{element.name}>\n'
+	for element in soup.find_all(['p', 'pre', 'blockquote']):
+		if not isinstance(element, Tag):
+			continue
+
+		if element.name == 'p':
+			result += f'{await _process_element(element)}\n'
+		elif element.name == 'blockquote':
+			result += (
+				f'<{element.name}>{await _process_element(element)}</{element.name}>\n'
+			)
+		elif element.name == 'pre':
+			result += f'<{element.name}>{element.get_text()}</{element.name}>\n'
 
 	return result
