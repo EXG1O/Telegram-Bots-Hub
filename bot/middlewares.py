@@ -1,7 +1,10 @@
 from aiogram import BaseMiddleware
 from aiogram.types import CallbackQuery, Message, TelegramObject, Update, User
 
-from service.types import ServiceBot, ServiceBotCommand, ServiceBotUser
+from service.data import Bot as ServiceBot
+from service.data import Command
+from service.data import User as ServiceUser
+from service.enums import CommandKeyboardType
 
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any, TypeVar
@@ -11,6 +14,7 @@ if TYPE_CHECKING:
 	from .bot import Bot
 else:
 	Bot = Any
+
 
 T = TypeVar('T')
 
@@ -26,9 +30,11 @@ class CreateUserMiddleware(BaseMiddleware):
 		if event_from_user:
 			bot: Bot = data['bot']
 
-			data['service_bot_user'] = await bot.api.create_bot_user(
-				event_from_user.id,
-				event_from_user.full_name,
+			data['service_bot_user'] = await bot.api.create_user(
+				{
+					'telegram_id': event_from_user.id,
+					'full_name': event_from_user.full_name,
+				}
 			)
 
 			return await handler(event, data)
@@ -39,10 +45,14 @@ class CheckUserPermissionsMiddleware(BaseMiddleware):
 		self, handler: Handler, event: Update, data: dict[str, Any]
 	) -> Any:
 		bot: Bot = data['bot']
-		_bot: ServiceBot = await bot.api.get_bot()
-		user: ServiceBotUser = data['service_bot_user']
+		service_bot: ServiceBot = await bot.api.get_bot()
+		service_bot_user: ServiceUser = data['service_bot_user']
 
-		match (_bot.is_private, user.is_allowed, user.is_blocked):
+		match (
+			service_bot.is_private,
+			service_bot_user.is_allowed,
+			service_bot_user.is_blocked,
+		):
 			case (True, True, False) | (False, _, False):
 				return await handler(event, data)
 
@@ -51,10 +61,10 @@ class SearchCommandMiddleware(BaseMiddleware):
 	async def search_command_by_text(
 		self,
 		text: str,
-		commands: list[ServiceBotCommand],
-	) -> ServiceBotCommand | None:
+		commands: list[Command],
+	) -> Command | None:
 		for command in commands:
-			if command.command and command.command.text == text:
+			if command.trigger and command.trigger.text == text:
 				return command
 
 		return None
@@ -63,13 +73,16 @@ class SearchCommandMiddleware(BaseMiddleware):
 		self,
 		bot: Bot,
 		text: str,
-		commands: list[ServiceBotCommand],
-	) -> ServiceBotCommand | None:
+		commands: list[Command],
+	) -> Command | None:
 		for command in commands:
-			if command.keyboard and command.keyboard.type == 'default':
+			if (
+				command.keyboard
+				and command.keyboard.type == CommandKeyboardType.DEFAULT
+			):
 				for button in command.keyboard.buttons:
 					if button.text == text:
-						return await bot.api.get_bot_command(command.id)
+						return await bot.api.get_command(command.id)
 
 		return None
 
@@ -77,13 +90,16 @@ class SearchCommandMiddleware(BaseMiddleware):
 		self,
 		bot: Bot,
 		button_id: int,
-		commands: list[ServiceBotCommand],
-	) -> ServiceBotCommand | None:
+		commands: list[Command],
+	) -> Command | None:
 		for command in commands:
-			if command.keyboard and command.keyboard.type in ('inline', 'payment'):
+			if command.keyboard and command.keyboard.type in [
+				CommandKeyboardType.INLINE,
+				CommandKeyboardType.PAYMENT,
+			]:
 				for button in command.keyboard.buttons:
 					if button.id == button_id:
-						return await bot.api.get_bot_command(command.id)
+						return await bot.api.get_command(command.id)
 
 		return None
 
@@ -91,8 +107,8 @@ class SearchCommandMiddleware(BaseMiddleware):
 		self, handler: Handler, event: Update, data: dict[str, Any]
 	) -> Any:
 		bot: Bot = data['bot']
-		commands = await bot.api.get_bot_commands()
-		found_command: ServiceBotCommand | None = None
+		commands = await bot.api.get_commands()
+		found_command: Command | None = None
 
 		if isinstance(event.event, Message) and event.event.text:
 			text: str = event.event.text

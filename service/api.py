@@ -1,70 +1,74 @@
 from dacite import from_dict
+from yarl import URL
 import aiohttp
 
 from core import settings
 
-from .types import (
-	ServiceBot,
-	ServiceBotCommand,
-	ServiceBotUser,
-	ServiceBotVariable,
-	UpdateServiceBotData,
-)
+from .data import BackgroundTask, Bot, Command, Condition, User, Variable
+from .types import CreateUserData
 
-HEADERS = {'Authorization': f'Token {settings.service_token}'}
+HEADERS = {'Authorization': f'Token {settings.SERVICE_TOKEN}'}
 
 
 class API:
+	"""Bot API for getting data from the main service."""
+
 	def __init__(self, bot_service_id: int) -> None:
-		self.url = f'/api/telegram-bots/hub/{bot_service_id}'
-		self.session = aiohttp.ClientSession('http://127.0.0.1:8000', headers=HEADERS)
+		self.session = aiohttp.ClientSession(
+			URL(
+				settings.SERVICE_URL
+				+ f'/api/telegram-bots-hub/telegram-bots/{bot_service_id}'
+			),
+			headers=HEADERS,
+			raise_for_status=True,
+		)
 
-	async def get_bot(self) -> ServiceBot:
-		async with self.session.get(f'{self.url}/') as response:
-			response.raise_for_status()
+	async def get_bot(self) -> Bot:
+		async with self.session.get('/') as response:
+			return from_dict(Bot, await response.json())
 
-			return from_dict(ServiceBot, await response.json())
+	async def get_commands(self) -> list[Command]:
+		async with self.session.get('/commands') as response:
+			return [from_dict(Command, data) for data in await response.json()]
 
-	async def update_bot(self, data: UpdateServiceBotData) -> ServiceBot:
-		async with self.session.patch(f'{self.url}/', data=data) as response:
-			response.raise_for_status()
+	async def get_command(self, command_id: int) -> Command:
+		async with self.session.get(f'/commands/{command_id}') as response:
+			return from_dict(Command, await response.json())
 
-			return from_dict(ServiceBot, await response.json())
+	async def get_conditions(self) -> list[Condition]:
+		async with self.session.get('/conditions') as response:
+			return [from_dict(Condition, data) for data in await response.json()]
 
-	async def get_bot_commands(self) -> list[ServiceBotCommand]:
-		async with self.session.get(f'{self.url}/commands/') as response:
-			response.raise_for_status()
+	async def get_condition(self, condition_id: int) -> Condition:
+		async with self.session.get(f'/conditions/{condition_id}') as response:
+			return from_dict(Condition, await response.json())
 
-			return [
-				from_dict(ServiceBotCommand, data) for data in await response.json()
-			]
+	async def get_background_tasks(self) -> list[BackgroundTask]:
+		async with self.session.get('/background_tasks') as response:
+			return [from_dict(BackgroundTask, data) for data in await response.json()]
 
-	async def get_bot_command(self, command_service_id: int) -> ServiceBotCommand:
+	async def get_background_task(self, background_task_id: int) -> BackgroundTask:
 		async with self.session.get(
-			f'{self.url}/commands/{command_service_id}'
+			f'/background_tasks/{background_task_id}'
 		) as response:
-			response.raise_for_status()
+			return from_dict(BackgroundTask, await response.json())
 
-			return from_dict(ServiceBotCommand, await response.json())
+	async def get_variables(self) -> list[Variable]:
+		async with self.session.get('/variables') as response:
+			return [from_dict(Variable, data) for data in await response.json()]
 
-	async def get_bot_variables(self) -> list[ServiceBotVariable]:
-		async with self.session.get(f'{self.url}/variables/') as response:
-			response.raise_for_status()
+	async def get_variable(self, variable_id: int) -> Variable:
+		async with self.session.get(f'/variables/{variable_id}') as response:
+			return from_dict(Variable, await response.json())
 
-			return [
-				from_dict(ServiceBotVariable, data) for data in await response.json()
-			]
+	async def get_users(self) -> list[User]:
+		async with self.session.get('/users') as response:
+			return [from_dict(User, data) for data in await response.json()]
 
-	async def create_bot_user(
-		self, user_telegram_id: int, user_full_name: str
-	) -> ServiceBotUser:
-		async with self.session.post(
-			f'{self.url}/users/',
-			data={
-				'telegram_id': user_telegram_id,
-				'full_name': user_full_name,
-			},
-		) as response:
-			response.raise_for_status()
+	async def get_user(self, user_id: int) -> User:
+		async with self.session.get(f'/users/{user_id}') as response:
+			return from_dict(User, await response.json())
 
-			return from_dict(ServiceBotUser, await response.json())
+	async def create_user(self, data: CreateUserData) -> User:
+		async with self.session.post('/users', data=data) as response:
+			return from_dict(User, await response.json())

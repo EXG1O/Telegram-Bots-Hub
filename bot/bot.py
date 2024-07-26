@@ -1,5 +1,6 @@
 from aiogram import Bot as BaseBot
 from aiogram import Dispatcher
+from aiogram.enums import ParseMode
 from aiogram.exceptions import (
 	RestartingTelegram,
 	TelegramEntityTooLarge,
@@ -11,9 +12,7 @@ from aiogram.exceptions import (
 	TelegramServerError,
 )
 from aiogram.methods import TelegramMethod
-from aiogram.types import (
-	BotCommand as BotMenuCommand,
-)
+from aiogram.types import BotCommand as BotMenuCommand
 from aiogram.types import (
 	CallbackQuery,
 	Chat,
@@ -22,11 +21,12 @@ from aiogram.types import (
 	InputMediaPhoto,
 	Message,
 	ReplyKeyboardMarkup,
+	URLInputFile,
 	User,
 )
 
 from service import API
-from service.types import ServiceBotCommand
+from service.data import Command
 
 from .middlewares import (
 	CheckUserPermissionsMiddleware,
@@ -44,7 +44,7 @@ T = TypeVar('T')
 
 class Bot(BaseBot):
 	def __init__(self, service_id: int, token: str) -> None:
-		super().__init__(token, parse_mode='html')
+		super().__init__(token, parse_mode=ParseMode.HTML)
 
 		self.service_id = service_id
 
@@ -87,20 +87,20 @@ class Bot(BaseBot):
 		return self.last_messages.setdefault(chat_id, [])
 
 	async def delete_last_messages(self, chat_id: int) -> None:
-		last_bot_messages: list[Message] = await self.get_last_messages(chat_id)
+		last_messages: list[Message] = await self.get_last_messages(chat_id)
 
-		for num, last_bot_message in enumerate(last_bot_messages.copy()):
+		for index, last_message in enumerate(last_messages.copy()):
 			try:
-				await last_bot_message.delete()
+				await last_message.delete()
 			finally:
-				del last_bot_messages[num]
+				del last_messages[index]
 
 	async def generate_variables(self, message: Message, user: User) -> dict[str, Any]:
-		_bot: User = await self.me()
+		bot: User = await self.me()
 
 		return {
-			'BOT_NAME': _bot.full_name,
-			'BOT_USERNAME': _bot.username,
+			'BOT_NAME': bot.full_name,
+			'BOT_USERNAME': bot.username,
 			'USER_ID': user.id,
 			'USER_USERNAME': user.username,
 			'USER_FIRST_NAME': user.first_name,
@@ -112,7 +112,7 @@ class Bot(BaseBot):
 			'USER_MESSAGE_DATE': message.date,
 			**{
 				variable.name: variable.value
-				for variable in await self.api.get_bot_variables()
+				for variable in await self.api.get_variables()
 			},
 		}
 
@@ -121,7 +121,7 @@ class Bot(BaseBot):
 		event: Message,
 		chat: Chat,
 		user: User,
-		command: ServiceBotCommand,
+		command: Command,
 		keyboard: ReplyKeyboardMarkup | InlineKeyboardMarkup | None = None,
 	) -> None:
 		reply_to_message_id: int | None = None
@@ -133,22 +133,22 @@ class Bot(BaseBot):
 			await self.delete_last_messages(chat.id)
 
 		kwargs: dict[str, Any] = {'reply_to_message_id': reply_to_message_id}
-		# images: list[InputMediaPhoto] = [
-		# 	InputMediaPhoto(media=BufferedInputFile(image.image, image.name))
-		# 	for image in command.images
-		# ][:10]
-		# files: list[InputMediaDocument] = [
-		# 	InputMediaDocument(media=BufferedInputFile(file.file, file.name))
-		# 	for file in command.files
-		# ][:10]
-		images: list[InputMediaPhoto] = []
-		files: list[InputMediaDocument] = []
+		images: list[InputMediaPhoto] = [
+			InputMediaPhoto(media=URLInputFile(url, filename=image.name))
+			for image in command.images
+			if (url := image.url or image.from_url)
+		][:10]
+		files: list[InputMediaDocument] = [
+			InputMediaDocument(media=URLInputFile(url, filename=file.name))
+			for file in command.files
+			if (url := file.url or file.from_url)
+		][:10]
 
 		if len(images) == 1 and len(files) == 1:
 			await event.answer_photo(images[0].media, **kwargs)
 			await event.answer_document(files[0].media, **kwargs)
 			await event.answer(
-				command.message_text.text,
+				command.message.text,
 				reply_markup=keyboard,
 				**kwargs,
 			)
@@ -156,7 +156,7 @@ class Bot(BaseBot):
 			await event.answer_media_group(images, **kwargs)  # type: ignore [arg-type]
 			await event.answer_document(
 				files[0].media,
-				caption=command.message_text.text,
+				caption=command.message.text,
 				reply_markup=keyboard,
 				**kwargs,
 			)
@@ -164,7 +164,7 @@ class Bot(BaseBot):
 			await event.answer_media_group(files, **kwargs)  # type: ignore [arg-type]
 			await event.answer_photo(
 				images[0].media,
-				command.message_text.text,
+				command.message.text,
 				reply_markup=keyboard,
 				**kwargs,
 			)
@@ -172,27 +172,27 @@ class Bot(BaseBot):
 			await event.answer_media_group(images, **kwargs)  # type: ignore [arg-type]
 			await event.answer_media_group(files, **kwargs)  # type: ignore [arg-type]
 			await event.answer(
-				command.message_text.text,
+				command.message.text,
 				reply_markup=keyboard,
 				**kwargs,
 			)
 		elif len(images) == 1:
 			await event.answer_photo(
 				images[0].media,
-				command.message_text.text,
+				command.message.text,
 				reply_markup=keyboard,
 				**kwargs,
 			)
 		elif len(files) == 1:
 			await event.answer_document(
 				files[0].media,
-				caption=command.message_text.text,
+				caption=command.message.text,
 				reply_markup=keyboard,
 				**kwargs,
 			)
 		else:
 			await event.answer(
-				command.message_text.text,
+				command.message.text,
 				reply_markup=keyboard,
 				**kwargs,
 			)
@@ -205,7 +205,7 @@ class Bot(BaseBot):
 		event: Message,
 		event_chat: Chat,
 		event_from_user: User,
-		command: ServiceBotCommand,
+		command: Command,
 		**kwargs: Any,
 	) -> None:
 		await self.answer(
@@ -220,32 +220,30 @@ class Bot(BaseBot):
 		event: CallbackQuery,
 		event_chat: Chat,
 		event_from_user: User,
-		command: ServiceBotCommand,
+		command: Command,
 		**kwargs: Any,
 	) -> None:
-		if isinstance(event.message, Message):
-			await self.answer(
-				event.message,
-				event_chat,
-				event_from_user,
-				command,
-			)
+		if not isinstance(event.message, Message):
+			return
+
+		await self.answer(
+			event.message,
+			event_chat,
+			event_from_user,
+			command,
+		)
 
 	async def setup(self) -> None:
-		menu_commands: list[BotMenuCommand] = []
-
-		for command in await self.api.get_bot_commands():
-			if command.command and command.command.description is not None:
-				menu_commands.append(
-					BotMenuCommand(
-						command=re.sub(
-							f'[{string.punctuation}]', '', command.command.text
-						),
-						description=command.command.description,
-					)
+		await self.set_my_commands(
+			[
+				BotMenuCommand(
+					command=re.sub(f'[{string.punctuation}]', '', command.trigger.text),
+					description=command.trigger.description,
 				)
-
-		await self.set_my_commands(menu_commands)
+				for command in await self.api.get_commands()
+				if command.trigger and command.trigger.description
+			]
+		)
 
 		self.dispatcher.update.outer_middleware.register(CreateUserMiddleware())
 		self.dispatcher.update.outer_middleware.register(
@@ -260,5 +258,9 @@ class Bot(BaseBot):
 		await self.setup()
 		asyncio.create_task(self.dispatcher.start_polling(self))
 
+	async def restart(self) -> None:
+		await self.setup()
+
 	async def stop(self) -> None:
 		await self.dispatcher.stop_polling()
+		await self.api.session.close()

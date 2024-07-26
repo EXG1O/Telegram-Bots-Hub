@@ -1,12 +1,14 @@
-from argparse import ArgumentParser, Namespace
+from dotenv import load_dotenv
 
-parser = ArgumentParser()
-parser.add_argument('--port', type=int, required=True)
-parser.add_argument('--service-token', required=True)
+from typing import Final
+import os
 
-args: Namespace = parser.parse_args()
+load_dotenv()
 
 
-port: int = args.port
-service_token: str = args.service_token
-max_bots_limit: int = 50
+DEBUG: Final[bool] = os.getenv('DEBUG', 'True') == 'True'
+
+TOKEN: Final[str] = os.environ['TOKEN']
+
+SERVICE_URL: Final[str] = os.environ['SERVICE_URL']
+SERVICE_TOKEN: Final[str] = os.environ['SERVICE_TOKEN']
