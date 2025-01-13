@@ -1,3 +1,5 @@
+from aiogram.types import Update
+
 from bot import Bot
 
 from .exceptions import BotAlreadyEnabledError, NotFoundBotError
@@ -30,3 +32,8 @@ async def restart_bot(bot_service_id: int) -> None:
 async def stop_bot(bot_service_id: int) -> None:
 	bot: Bot = await get_bot(bot_service_id)
 	await bot.stop()
+
+
+async def feed_bot_webhook_update(bot_service_id: int, update: Update) -> None:
+	bot: Bot = await get_bot(bot_service_id)
+	await bot.dispatcher.feed_webhook_update(bot, update)

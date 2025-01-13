@@ -1,6 +1,7 @@
 from aiogram import Bot as BaseBot
 from aiogram import Dispatcher
-from aiogram.enums import ParseMode
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode, UpdateType
 from aiogram.exceptions import (
 	RestartingTelegram,
 	TelegramEntityTooLarge,
@@ -25,6 +26,7 @@ from aiogram.types import (
 	User,
 )
 
+from core import settings
 from service import API
 from service.models import Command
 
@@ -44,7 +46,7 @@ T = TypeVar('T')
 
 class Bot(BaseBot):
 	def __init__(self, service_id: int, token: str) -> None:
-		super().__init__(token, parse_mode=ParseMode.HTML)
+		super().__init__(token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 
 		self.service_id = service_id
 
@@ -256,11 +258,15 @@ class Bot(BaseBot):
 
 	async def start(self) -> None:
 		await self.setup()
-		asyncio.create_task(self.dispatcher.start_polling(self))
+		await self.set_webhook(
+			f'{settings.SELF_URL}/{self.service_id}/webhook/',
+			allowed_updates=[UpdateType.MESSAGE, UpdateType.CALLBACK_QUERY],
+			secret_token=settings.SELF_TELEGRAM_TOKEN,
+		)
 
 	async def restart(self) -> None:
 		await self.setup()
 
 	async def stop(self) -> None:
-		await self.dispatcher.stop_polling()
+		await self.delete_webhook()
 		await self.service_api.session.close()
