@@ -26,7 +26,7 @@ from aiogram.types import (
 )
 
 from service import API
-from service.data import Command
+from service.models import Command
 
 from .middlewares import (
 	CheckUserPermissionsMiddleware,

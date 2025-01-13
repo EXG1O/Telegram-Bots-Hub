@@ -1,10 +1,10 @@
 from aiogram import BaseMiddleware
 from aiogram.types import CallbackQuery, Message, TelegramObject, Update, User
 
-from service.data import Bot as ServiceBot
-from service.data import Command
-from service.data import User as ServiceUser
 from service.enums import CommandKeyboardType
+from service.models import Bot as ServiceBot
+from service.models import Command
+from service.models import User as ServiceUser
 
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any, TypeVar

@@ -1,4 +1,4 @@
-from .base_data import APIRequest, CommandMedia
+from .base_models import APIRequest, CommandMedia
 from .enums import (
 	BackgroundTaskInterval,
 	CommandKeyboardType,

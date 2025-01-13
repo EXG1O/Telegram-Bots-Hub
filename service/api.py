@@ -4,8 +4,8 @@ import aiohttp
 
 from core import settings
 
-from .data import BackgroundTask, Bot, Command, Condition, User, Variable
-from .types import CreateUserData
+from .models import BackgroundTask, Bot, Command, Condition, User, Variable
+from .schemas import CreateUserData
 
 HEADERS = {'Authorization': f'Token {settings.SERVICE_TOKEN}'}
 
