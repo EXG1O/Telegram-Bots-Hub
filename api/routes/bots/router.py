@@ -3,7 +3,7 @@ from fastapi import APIRouter
 from core import dispatcher
 
 from ...enums import Tag
-from .models import StartBotRequest
+from .schemas import StartBotRequest
 
 router = APIRouter(prefix='/bots', tags=[Tag.BOTS])
 
