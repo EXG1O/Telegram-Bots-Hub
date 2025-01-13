@@ -5,6 +5,8 @@ from .enums import (
 	ConditionPartNextPartOperator,
 	ConditionPartOperator,
 	ConditionPartType,
+	ConnectionSourceObjectType,
+	ConnectionTargetObjectType,
 )
 
 from dataclasses import dataclass
@@ -21,7 +23,11 @@ class Bot:
 
 @dataclass
 class Connection:
-	pass
+	id: int
+	source_object_type: ConnectionSourceObjectType
+	source_object_id: int
+	target_object_type: ConnectionTargetObjectType
+	target_object_id: int
 
 
 @dataclass
@@ -59,6 +65,7 @@ class CommandKeyboardButton:
 	position: int
 	text: str
 	url: str | None
+	source_connections: list[Connection]
 
 
 @dataclass
@@ -89,6 +96,7 @@ class Command:
 	keyboard: CommandKeyboard | None
 	api_request: CommandAPIRequest | None
 	database_record: CommandDatabaseRecord | None
+	target_connections: list[Connection]
 
 
 @dataclass
@@ -106,6 +114,8 @@ class Condition:
 	id: int
 	name: str
 	parts: list[ConditionPart]
+	source_connections: list[Connection]
+	target_connections: list[Connection]
 
 
 @dataclass
@@ -119,6 +129,7 @@ class BackgroundTask:
 	name: str
 	interval: BackgroundTaskInterval
 	api_request: BackgroundTaskAPIRequest
+	source_connections: list[Connection]
 
 
 @dataclass
@@ -126,7 +137,6 @@ class Variable:
 	id: int
 	name: str
 	value: str
-	description: str
 
 
 @dataclass

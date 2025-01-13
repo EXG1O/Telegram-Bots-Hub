@@ -1,6 +1,17 @@
 from enum import Enum
 
 
+class ConnectionSourceObjectType(Enum):
+	COMMAND_KEYBOARD_BUTTON = 'command_keyboard_button'
+	CONDITION = 'condition'
+	BACKGROUND_TASK = 'background_task'
+
+
+class ConnectionTargetObjectType(Enum):
+	COMMAND = 'command'
+	CONDITION = 'condition'
+
+
 class APIRequestMethod(Enum):
 	GET = 'get'
 	POST = 'post'
