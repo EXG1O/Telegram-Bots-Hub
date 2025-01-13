@@ -30,7 +30,7 @@ class CreateUserMiddleware(BaseMiddleware):
 		if event_from_user:
 			bot: Bot = data['bot']
 
-			data['service_bot_user'] = await bot.api.create_user(
+			data['service_bot_user'] = await bot.service_api.create_user(
 				{
 					'telegram_id': event_from_user.id,
 					'full_name': event_from_user.full_name,
@@ -45,7 +45,7 @@ class CheckUserPermissionsMiddleware(BaseMiddleware):
 		self, handler: Handler, event: Update, data: dict[str, Any]
 	) -> Any:
 		bot: Bot = data['bot']
-		service_bot: ServiceBot = await bot.api.get_bot()
+		service_bot: ServiceBot = await bot.service_api.get_bot()
 		service_bot_user: ServiceUser = data['service_bot_user']
 
 		match (
@@ -82,7 +82,7 @@ class SearchCommandMiddleware(BaseMiddleware):
 			):
 				for button in command.keyboard.buttons:
 					if button.text == text:
-						return await bot.api.get_command(command.id)
+						return await bot.service_api.get_command(command.id)
 
 		return None
 
@@ -99,7 +99,7 @@ class SearchCommandMiddleware(BaseMiddleware):
 			]:
 				for button in command.keyboard.buttons:
 					if button.id == button_id:
-						return await bot.api.get_command(command.id)
+						return await bot.service_api.get_command(command.id)
 
 		return None
 
@@ -107,7 +107,7 @@ class SearchCommandMiddleware(BaseMiddleware):
 		self, handler: Handler, event: Update, data: dict[str, Any]
 	) -> Any:
 		bot: Bot = data['bot']
-		commands = await bot.api.get_commands()
+		commands = await bot.service_api.get_commands()
 		found_command: Command | None = None
 
 		if isinstance(event.event, Message) and event.event.text:

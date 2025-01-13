@@ -48,7 +48,7 @@ class Bot(BaseBot):
 
 		self.service_id = service_id
 
-		self.api = API(service_id)
+		self.service_api = API(service_id)
 		self.dispatcher = Dispatcher()
 		self.last_messages: dict[int, list[Message]] = {}
 
@@ -112,7 +112,7 @@ class Bot(BaseBot):
 			'USER_MESSAGE_DATE': message.date,
 			**{
 				variable.name: variable.value
-				for variable in await self.api.get_variables()
+				for variable in await self.service_api.get_variables()
 			},
 		}
 
@@ -240,7 +240,7 @@ class Bot(BaseBot):
 					command=re.sub(f'[{string.punctuation}]', '', command.trigger.text),
 					description=command.trigger.description,
 				)
-				for command in await self.api.get_commands()
+				for command in await self.service_api.get_commands()
 				if command.trigger and command.trigger.description
 			]
 		)
@@ -263,4 +263,4 @@ class Bot(BaseBot):
 
 	async def stop(self) -> None:
 		await self.dispatcher.stop_polling()
-		await self.api.session.close()
+		await self.service_api.session.close()
