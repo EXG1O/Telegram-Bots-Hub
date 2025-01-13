@@ -1,5 +1,4 @@
 from dacite import from_dict
-from yarl import URL
 import aiohttp
 
 from core import settings
@@ -15,10 +14,8 @@ class API:
 
 	def __init__(self, bot_service_id: int) -> None:
 		self.session = aiohttp.ClientSession(
-			URL(
-				settings.SERVICE_URL
-				+ f'/api/telegram-bots-hub/telegram-bots/{bot_service_id}'
-			),
+			settings.SERVICE_URL
+			/ f'api/telegram-bots-hub/telegram-bots/{bot_service_id}',
 			headers=HEADERS,
 			raise_for_status=True,
 		)
