@@ -10,15 +10,13 @@ from .enums import (
 )
 
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass
 class Bot:
 	id: int
-	api_token: str
 	is_private: bool
-	must_be_enabled: bool
-	is_enabled: bool
 
 
 @dataclass
@@ -81,7 +79,7 @@ class CommandAPIRequest(APIRequest):
 
 @dataclass
 class CommandDatabaseRecord:
-	data: str
+	data: dict[str, Any]
 
 
 @dataclass
