@@ -3,7 +3,6 @@ package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.12"
-aiogram = "^3.9.0"
 beautifulsoup4 = "^4.12.3"
 fastapi = "^0.111.0"
 lxml = "^5.2.2"
@@ -13,6 +12,7 @@ uvicorn = "^0.30.1"
 pydantic = "^2.8.2"
 yarl = "^1.9.4"
 python-dotenv = "^1.0.1"
+python-telegram-bot = "^21.10"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.5.1"

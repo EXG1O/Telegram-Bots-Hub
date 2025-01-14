@@ -1,244 +1,219 @@
-from aiogram import Bot as BaseBot
-from aiogram import Dispatcher
-from aiogram.client.default import DefaultBotProperties
-from aiogram.enums import ParseMode, UpdateType
-from aiogram.exceptions import (
-	RestartingTelegram,
-	TelegramEntityTooLarge,
-	TelegramForbiddenError,
-	TelegramMigrateToChat,
-	TelegramNetworkError,
-	TelegramNotFound,
-	TelegramRetryAfter,
-	TelegramServerError,
-)
-from aiogram.methods import TelegramMethod
-from aiogram.types import BotCommand as BotMenuCommand
-from aiogram.types import (
+from telegram import (
+	BotCommand,
 	CallbackQuery,
 	Chat,
 	InlineKeyboardMarkup,
 	InputMediaDocument,
 	InputMediaPhoto,
+	MaybeInaccessibleMessage,
 	Message,
 	ReplyKeyboardMarkup,
-	URLInputFile,
+	Update,
 	User,
 )
-
-from core import settings
-from service import API
-from service.models import Command
-
-from .middlewares import (
-	CheckUserPermissionsMiddleware,
-	CreateUserMiddleware,
-	SearchCommandMiddleware,
+from telegram.constants import ParseMode, UpdateType
+from telegram.ext import (
+	ApplicationBuilder,
+	CallbackQueryHandler,
+	ContextTypes,
+	Defaults,
+	MessageHandler,
+	filters,
 )
 
-from typing import Any, TypeVar
-import asyncio
+from core.settings import SELF_URL, SERVICE_URL, TELEGRAM_TOKEN
+from service import API
+import service.enums
+import service.models
+
+from .utils import process_text_with_html_tags
+
+from typing import Any
 import re
 import string
 
-T = TypeVar('T')
 
-
-class Bot(BaseBot):
-	def __init__(self, service_id: int, token: str) -> None:
-		super().__init__(token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+class Bot:
+	def __init__(self, service_id: int, token: str):
+		self.app = (
+			ApplicationBuilder()
+			.token(token)
+			.defaults(Defaults(parse_mode=ParseMode.HTML))
+			.updater(None)
+			.build()
+		)
 
 		self.service_id = service_id
-
 		self.service_api = API(service_id)
-		self.dispatcher = Dispatcher()
 		self.last_messages: dict[int, list[Message]] = {}
 
-	async def __call__(  # type: ignore [override]
-		self, method: TelegramMethod[T], *args: Any, **kwargs: Any
-	) -> T | None:
-		try:
-			result: T | None = await super().__call__(method, *args, **kwargs)  # type: ignore [arg-type]
-		except TelegramRetryAfter as exception:
-			await asyncio.sleep(exception.retry_after)
-			await self.__call__(method, *args, **kwargs)
-		except (
-			TelegramNetworkError,
-			TelegramServerError,
-			TelegramForbiddenError,
-			RestartingTelegram,
-			TelegramNotFound,
-			TelegramMigrateToChat,
-			TelegramEntityTooLarge,
-		):
+	async def find_command(
+		self, text: str | None = None, button_id: int | None = None
+	) -> service.models.Command | None:
+		commands: list[service.models.Command] = await self.service_api.get_commands()
+
+		if text:
+			for command in commands:
+				if (command.trigger and command.trigger.text == text) or (
+					command.keyboard
+					and command.keyboard.type
+					== service.enums.CommandKeyboardType.DEFAULT
+					and any(btn.text == text for btn in command.keyboard.buttons)
+				):
+					return command
+		elif button_id:
+			for command in commands:
+				if (
+					command.keyboard
+					and command.keyboard.type
+					in [
+						service.enums.CommandKeyboardType.INLINE,
+						service.enums.CommandKeyboardType.PAYMENT,
+					]
+					and any(btn.id == button_id for btn in command.keyboard.buttons)
+				):
+					return command
+
+		return None
+
+	async def handle_update(
+		self, update: Update, context: ContextTypes.DEFAULT_TYPE
+	) -> None:
+		command: service.models.Command | None = await self.find_command(
+			text=(update.message.text if update.message else None),
+			button_id=(
+				int(update.callback_query.data)
+				if update.callback_query and update.callback_query.data
+				else None
+			),
+		)
+
+		if not command:
 			return None
 
-		if result:
-			if isinstance(result, list):
-				for instance in result:
-					if isinstance(instance, Message):
-						self.last_messages.setdefault(instance.chat.id, []).append(
-							instance
-						)
-			elif isinstance(result, Message):
-				self.last_messages.setdefault(result.chat.id, []).append(result)
+		callback_query: CallbackQuery | None = update.callback_query
+		message: Message | MaybeInaccessibleMessage | None = (
+			callback_query.message if callback_query else update.message
+		)
 
-		return result  # type: ignore [return-value]
+		if not message:
+			return None
 
-	async def get_last_messages(self, chat_id: int) -> list[Message]:
-		return self.last_messages.setdefault(chat_id, [])
+		chat: Chat | None = update.effective_chat
+		user: User | None = update.effective_user
 
-	async def delete_last_messages(self, chat_id: int) -> None:
-		last_messages: list[Message] = await self.get_last_messages(chat_id)
+		if not chat or not user:
+			return None
 
-		for index, last_message in enumerate(last_messages.copy()):
-			try:
-				await last_message.delete()
-			finally:
-				del last_messages[index]
-
-	async def generate_variables(self, message: Message, user: User) -> dict[str, Any]:
-		bot: User = await self.me()
-
-		return {
-			'BOT_NAME': bot.full_name,
-			'BOT_USERNAME': bot.username,
-			'USER_ID': user.id,
-			'USER_USERNAME': user.username,
-			'USER_FIRST_NAME': user.first_name,
-			'USER_LAST_NAME': user.last_name,
-			'USER_FULL_NAME': user.full_name,
-			'USER_LANGUAGE_CODE': user.language_code,
-			'USER_MESSAGE_ID': message.message_id,
-			'USER_MESSAGE_TEXT': message.text,
-			'USER_MESSAGE_DATE': message.date,
-			**{
-				variable.name: variable.value
-				for variable in await self.service_api.get_variables()
-			},
-		}
-
-	async def answer(
-		self,
-		event: Message,
-		chat: Chat,
-		user: User,
-		command: Command,
-		keyboard: ReplyKeyboardMarkup | InlineKeyboardMarkup | None = None,
-	) -> None:
+		message_text: str = await process_text_with_html_tags(command.message.text)
+		keyboard: ReplyKeyboardMarkup | InlineKeyboardMarkup | None = None
 		reply_to_message_id: int | None = None
 
 		if command.settings.is_reply_to_user_message:
-			reply_to_message_id = event.message_id
+			reply_to_message_id = message.message_id
 
 		if command.settings.is_send_as_new_message:
-			await self.delete_last_messages(chat.id)
+			await chat.delete_messages(
+				[last_message.id for last_message in self.last_messages.pop(chat.id)]
+			)
 
 		kwargs: dict[str, Any] = {'reply_to_message_id': reply_to_message_id}
 		images: list[InputMediaPhoto] = [
-			InputMediaPhoto(media=URLInputFile(url, filename=image.name))
+			InputMediaPhoto(str(SERVICE_URL / url[1:]))
 			for image in command.images
 			if (url := image.url or image.from_url)
 		][:10]
 		files: list[InputMediaDocument] = [
-			InputMediaDocument(media=URLInputFile(url, filename=file.name))
+			InputMediaDocument(str(SERVICE_URL / url[1:]))
 			for file in command.files
 			if (url := file.url or file.from_url)
 		][:10]
 
-		if len(images) == 1 and len(files) == 1:
-			await event.answer_photo(images[0].media, **kwargs)
-			await event.answer_document(files[0].media, **kwargs)
-			await event.answer(
-				command.message.text,
-				reply_markup=keyboard,
-				**kwargs,
+		image_count: int = len(images)
+		file_count: int = len(files)
+		new_bot_messages: list[Message] = []
+
+		if image_count == 1 and file_count == 1:
+			new_bot_messages += [
+				await chat.send_photo(images[0].media, **kwargs),  # type: ignore [arg-type]
+				await chat.send_document(files[0].media, **kwargs),  # type: ignore [arg-type]
+				await chat.send_message(message_text, reply_markup=keyboard, **kwargs),
+			]
+		elif image_count > 1 and file_count == 1:
+			new_bot_messages.extend(await chat.send_media_group(images, **kwargs))
+			new_bot_messages.append(
+				await chat.send_document(
+					files[0].media,  # type: ignore [arg-type]
+					caption=message_text,
+					reply_markup=keyboard,
+					**kwargs,
+				)
 			)
-		elif len(images) > 1 and len(files) == 1:
-			await event.answer_media_group(images, **kwargs)  # type: ignore [arg-type]
-			await event.answer_document(
-				files[0].media,
-				caption=command.message.text,
-				reply_markup=keyboard,
-				**kwargs,
+		elif image_count == 1 and file_count > 1:
+			new_bot_messages.extend(await chat.send_media_group(files, **kwargs))
+			new_bot_messages.append(
+				await chat.send_photo(
+					images[0].media,  # type: ignore [arg-type]
+					message_text,
+					reply_markup=keyboard,
+					**kwargs,
+				)
 			)
-		elif len(images) == 1 and len(files) > 1:
-			await event.answer_media_group(files, **kwargs)  # type: ignore [arg-type]
-			await event.answer_photo(
-				images[0].media,
-				command.message.text,
-				reply_markup=keyboard,
-				**kwargs,
+		elif image_count > 1 and file_count > 1:
+			new_bot_messages.extend(await chat.send_media_group(images, **kwargs))
+			new_bot_messages.extend(await chat.send_media_group(files, **kwargs))
+			new_bot_messages.append(
+				await chat.send_message(message_text, reply_markup=keyboard, **kwargs)
 			)
-		elif len(images) > 1 and len(files) > 1:
-			await event.answer_media_group(images, **kwargs)  # type: ignore [arg-type]
-			await event.answer_media_group(files, **kwargs)  # type: ignore [arg-type]
-			await event.answer(
-				command.message.text,
-				reply_markup=keyboard,
-				**kwargs,
+		elif image_count == 1:
+			new_bot_messages.append(
+				await chat.send_photo(
+					images[0].media,  # type: ignore [arg-type]
+					message_text,
+					reply_markup=keyboard,
+					**kwargs,
+				)
 			)
-		elif len(images) == 1:
-			await event.answer_photo(
-				images[0].media,
-				command.message.text,
-				reply_markup=keyboard,
-				**kwargs,
-			)
-		elif len(files) == 1:
-			await event.answer_document(
-				files[0].media,
-				caption=command.message.text,
-				reply_markup=keyboard,
-				**kwargs,
+		elif file_count == 1:
+			new_bot_messages.append(
+				await chat.send_document(
+					files[0].media,  # type: ignore [arg-type]
+					caption=message_text,
+					reply_markup=keyboard,
+					**kwargs,
+				)
 			)
 		else:
-			await event.answer(
-				command.message.text,
-				reply_markup=keyboard,
-				**kwargs,
+			new_bot_messages.append(
+				await chat.send_message(message_text, reply_markup=keyboard, **kwargs)
 			)
 
 		if not user.is_bot and command.settings.is_delete_user_message:
-			await event.delete()
+			await chat.delete_message(message.message_id)
 
-	async def message_handler(
-		self,
-		event: Message,
-		event_chat: Chat,
-		event_from_user: User,
-		command: Command,
-		**kwargs: Any,
-	) -> None:
-		await self.answer(
-			event,
-			event_chat,
-			event_from_user,
-			command,
+	async def feed_webhook_update(self, update: Update) -> None:
+		user: User | None = update.effective_user
+
+		if not user:
+			return None
+
+		service_bot: service.models.Bot = await self.service_api.get_bot()
+		service_user: service.models.User = await self.service_api.create_user(
+			{'telegram_id': user.id, 'full_name': user.full_name}
 		)
 
-	async def callback_query_handler(
-		self,
-		event: CallbackQuery,
-		event_chat: Chat,
-		event_from_user: User,
-		command: Command,
-		**kwargs: Any,
-	) -> None:
-		if not isinstance(event.message, Message):
-			return
-
-		await self.answer(
-			event.message,
-			event_chat,
-			event_from_user,
-			command,
-		)
+		match (
+			service_bot.is_private,
+			service_user.is_allowed,
+			service_user.is_blocked,
+		):
+			case (True, True, False) | (False, _, False):
+				await self.app.update_queue.put(update)
 
 	async def setup(self) -> None:
-		await self.set_my_commands(
+		await self.app.bot.set_my_commands(
 			[
-				BotMenuCommand(
+				BotCommand(
 					command=re.sub(f'[{string.punctuation}]', '', command.trigger.text),
 					description=command.trigger.description,
 				)
@@ -247,26 +222,25 @@ class Bot(BaseBot):
 			]
 		)
 
-		self.dispatcher.update.outer_middleware.register(CreateUserMiddleware())
-		self.dispatcher.update.outer_middleware.register(
-			CheckUserPermissionsMiddleware()
-		)
-		self.dispatcher.update.outer_middleware.register(SearchCommandMiddleware())
-
-		self.dispatcher.message.register(self.message_handler)
-		self.dispatcher.callback_query.register(self.callback_query_handler)
-
 	async def start(self) -> None:
 		await self.setup()
-		await self.set_webhook(
-			f'{settings.SELF_URL}/{self.service_id}/webhook/',
+
+		self.app.add_handler(MessageHandler(filters.TEXT, self.handle_update))
+		self.app.add_handler(CallbackQueryHandler(self.handle_update))
+
+		await self.app.bot.set_webhook(
+			f'{SELF_URL}/bots/{self.service_id}/webhook/',
 			allowed_updates=[UpdateType.MESSAGE, UpdateType.CALLBACK_QUERY],
-			secret_token=settings.SELF_TELEGRAM_TOKEN,
+			secret_token=TELEGRAM_TOKEN,
 		)
 
-	async def restart(self) -> None:
-		await self.setup()
+		await self.app.initialize()
+		await self.app.start()
 
 	async def stop(self) -> None:
-		await self.delete_webhook()
-		await self.service_api.session.close()
+		try:
+			await self.app.bot.delete_webhook()
+		finally:
+			await self.service_api.session.close()
+			await self.app.stop()
+			await self.app.shutdown()
