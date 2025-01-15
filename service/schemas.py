@@ -1,4 +1,4 @@
-from typing import Any, TypedDict
+from typing import TypedDict
 
 
 class CreateUserData(TypedDict):
@@ -7,4 +7,4 @@ class CreateUserData(TypedDict):
 
 
 class CreateDatabaseRecord(TypedDict):
-	data: dict[str, Any]
+	data: str
