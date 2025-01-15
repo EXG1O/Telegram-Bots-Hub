@@ -29,16 +29,18 @@ class Connection:
 
 
 @dataclass
+class CommandTrigger:
+	id: int
+	command_id: int
+	text: str
+	description: str | None
+
+
+@dataclass
 class CommandSettings:
 	is_reply_to_user_message: bool
 	is_delete_user_message: bool
 	is_send_as_new_message: bool
-
-
-@dataclass
-class CommandTrigger:
-	text: str
-	description: str | None
 
 
 @dataclass
@@ -87,7 +89,6 @@ class Command:
 	id: int
 	name: str
 	settings: CommandSettings
-	trigger: CommandTrigger | None
 	images: list[CommandImage]
 	files: list[CommandFile]
 	message: CommandMessage
@@ -126,7 +127,7 @@ class BackgroundTask:
 	id: int
 	name: str
 	interval: BackgroundTaskInterval
-	api_request: BackgroundTaskAPIRequest
+	api_request: BackgroundTaskAPIRequest | None
 	source_connections: list[Connection]
 
 
@@ -144,3 +145,9 @@ class User:
 	full_name: str
 	is_allowed: bool
 	is_blocked: bool
+
+
+@dataclass
+class DatabaseRecord:
+	id: int
+	data: dict[str, Any]

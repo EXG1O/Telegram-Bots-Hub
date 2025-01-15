@@ -1,6 +1,7 @@
 from .enums import APIRequestMethod
 
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass
@@ -17,5 +18,5 @@ class CommandMedia:
 class APIRequest:
 	url: str
 	method: APIRequestMethod
-	headers: str | None
-	body: str | None
+	headers: dict[str, Any] | None
+	body: dict[str, Any] | None
