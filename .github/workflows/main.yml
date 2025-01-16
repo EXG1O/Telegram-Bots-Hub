@@ -1,0 +1,36 @@
+name: Main CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
+
+      - name: Create Python virtual environment
+        run: python -m venv env
+
+      - name: Install Python requirements
+        run: |
+          source ./env/bin/activate
+          pip install -U pip
+          pip install poetry
+          poetry install
+
+      - name: Run ruff
+        run: |
+          ./env/bin/ruff check .
+          ./env/bin/ruff format --check .
+
+      - name: Run mypy
+        run: ./env/bin/mypy .
