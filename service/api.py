@@ -1,10 +1,9 @@
+from aiohttp import ClientSession, UnixConnector
 from aiohttp.typedefs import LooseHeaders
 from dacite import Config, from_dict
 from yarl import URL
-import aiohttp
-import aiohttp.typedefs
 
-from core import settings
+from core.settings import SERVICE_TOKEN, SERVICE_UNIX_SOCK, SERVICE_URL
 
 from .enums import (
 	APIRequestMethod,
@@ -29,6 +28,8 @@ from .models import (
 )
 from .schemas import CreateDatabaseRecord, CreateUserData
 
+from typing import Final
+
 config = Config(
 	type_hooks={
 		ConnectionSourceObjectType: ConnectionSourceObjectType,
@@ -42,7 +43,7 @@ config = Config(
 	}
 )
 
-HEADERS: LooseHeaders = {'Authorization': f'Token {settings.SERVICE_TOKEN}'}
+HEADERS: Final[LooseHeaders] = {'Authorization': f'Token {SERVICE_TOKEN}'}
 
 
 class API:
@@ -50,10 +51,17 @@ class API:
 
 	def __init__(self, bot_service_id: int) -> None:
 		self.root_url: URL = (
-			settings.SERVICE_URL
-			/ f'api/telegram-bots-hub/telegram-bots/{bot_service_id}/'
+			SERVICE_URL / f'api/telegram-bots-hub/telegram-bots/{bot_service_id}/'
 		)
-		self.session = aiohttp.ClientSession(headers=HEADERS, raise_for_status=True)
+		self.session = ClientSession(
+			# Don't move the init of the `UnixConnector` class outside of this class, ...
+			# because it will cause an error when sending requests.
+			connector=UnixConnector(path=str(SERVICE_UNIX_SOCK))
+			if SERVICE_UNIX_SOCK
+			else None,
+			headers=HEADERS,
+			raise_for_status=True,
+		)
 
 	async def get_bot(self) -> Bot:
 		async with self.session.get(self.root_url) as response:
