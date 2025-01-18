@@ -36,8 +36,9 @@ async def start_bot(bot_service_id: int, request: StartBotRequest) -> None:
 @bots_router.post('/{bot_service_id}/restart/')
 async def restart_bot(bot_service_id: BotServiceID) -> None:
 	old_bot: Bot = bots[bot_service_id]
+	await old_bot.stop()
 
-	bot = Bot(bot_service_id, old_bot.app.bot.token)
+	bot = Bot(bot_service_id, old_bot.bot.token)
 	bots[bot_service_id] = bot
 
 	try:
