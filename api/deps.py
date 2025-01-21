@@ -13,26 +13,26 @@ telegram_token_header = APIKeyHeader(name='X-Telegram-Bot-Api-Secret-Token')
 
 
 async def verify_self_token(token: Annotated[str, Depends(self_token_header)]) -> str:
-	if token != SELF_TOKEN:
-		raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+    if token != SELF_TOKEN:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
-	return token
+    return token
 
 
 async def verify_telegram_token(
-	token: Annotated[str, Depends(telegram_token_header)],
+    token: Annotated[str, Depends(telegram_token_header)],
 ) -> str:
-	if token != TELEGRAM_TOKEN:
-		raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+    if token != TELEGRAM_TOKEN:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
-	return token
+    return token
 
 
 async def check_bot_service_id(bot_service_id: int) -> int:
-	if bot_service_id not in bots:
-		raise NotFoundBotError()
+    if bot_service_id not in bots:
+        raise NotFoundBotError()
 
-	return bot_service_id
+    return bot_service_id
 
 
 BotServiceID = Annotated[int, Depends(check_bot_service_id)]
