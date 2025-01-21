@@ -17,6 +17,6 @@ TELEGRAM_TOKEN: Final[str] = token_hex(32)
 
 SERVICE_URL: Final[URL] = URL(os.environ['SERVICE_URL'])
 SERVICE_UNIX_SOCK: Final[Path | None] = (
-	Path(path) if (path := os.getenv('SERVICE_UNIX_SOCK')) else None
+    Path(path) if (path := os.getenv('SERVICE_UNIX_SOCK')) else None
 )
 SERVICE_TOKEN: Final[str] = os.environ['SERVICE_TOKEN']

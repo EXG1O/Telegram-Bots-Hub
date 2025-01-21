@@ -1,6 +1,6 @@
 class NotFoundBotError(Exception):
-	pass
+    pass
 
 
 class BotAlreadyEnabledError(Exception):
-	pass
+    pass
