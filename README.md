@@ -14,3 +14,6 @@ To run, use the following command:
 ```bash
 uvicorn main:app
 ```
+
+## Contributing
+Read [CONTRIBUTING.md](CONTRIBUTING.md) for more information on this.
