@@ -1,5 +1,8 @@
-from bot import Bot
+from typing import TYPE_CHECKING, Any, Final
 
-from typing import Final
+if TYPE_CHECKING:
+    from bot import Bot
+else:
+    Bot = Any
 
 bots: Final[dict[int, Bot]] = {}

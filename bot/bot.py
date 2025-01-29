@@ -25,6 +25,7 @@ from telegram.ext import (
 import aiohttp
 
 from core.settings import SELF_URL, SERVICE_URL, TELEGRAM_TOKEN
+from core.storage import bots
 from service import API
 import service.base_models
 import service.enums
@@ -529,6 +530,8 @@ class Bot:
         try:
             await self.bot.delete_webhook()
         finally:
+            del bots[self.service_id]
+
             await self.app.stop()
             await self.app.shutdown()
             await self.service_api.session.close()
