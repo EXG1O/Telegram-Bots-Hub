@@ -49,7 +49,7 @@ async def restart_bot(bot_service_id: BotServiceID) -> None:
 
 @bots_router.post('/{bot_service_id}/stop/')
 async def stop_bot(bot_service_id: BotServiceID) -> None:
-    await bots.pop(bot_service_id).stop()
+    await bots[bot_service_id].stop()
 
 
 @router.post(
