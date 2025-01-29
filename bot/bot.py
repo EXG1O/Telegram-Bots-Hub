@@ -92,7 +92,7 @@ class Bot:
 
 		variables.update(
 			{
-				variable.name: variable.value
+				variable.name: await process_text_with_html(variable.value)
 				for variable in await self.service_api.get_variables()
 			}
 		)
