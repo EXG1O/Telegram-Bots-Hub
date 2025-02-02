@@ -4,6 +4,7 @@ from telegram import (
     Chat,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
+    InputMedia,
     InputMediaDocument,
     InputMediaPhoto,
     MaybeInaccessibleMessage,
@@ -12,7 +13,8 @@ from telegram import (
     Update,
     User,
 )
-from telegram.constants import ParseMode, UpdateType
+from telegram._utils.types import ReplyMarkup
+from telegram.constants import MediaGroupLimit, ParseMode, UpdateType
 from telegram.error import InvalidToken
 from telegram.ext import (
     ApplicationBuilder,
@@ -31,15 +33,21 @@ import service.base_models
 import service.enums
 import service.models
 
+from .data import Media, MediaType, MediaValue
 from .request import ResilientHTTPXRequest
 from .utils import html, replace_text_variables
 
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, TypeVar, cast
+from urllib.parse import unquote
 import asyncio
 import json
 import re
 import string
+
+IM = TypeVar('IM', bound=InputMedia)
+CM = TypeVar('CM', bound=service.base_models.CommandMedia)
 
 
 class Bot:
@@ -253,6 +261,89 @@ class Bot:
             ]
         )
 
+    async def send_media_group(
+        self,
+        chat_id: int,
+        media: Media,
+        message_text: str,
+        reply_to_message_id: int | None = None,
+        keyboard: ReplyMarkup | None = None,
+    ) -> list[Message]:
+        kwargs: dict[str, Any] = {
+            'chat_id': chat_id,
+            'reply_to_message_id': reply_to_message_id,
+        }
+
+        if not any(media.values()):
+            return [
+                await self.bot.send_message(
+                    text=message_text, reply_markup=keyboard, **kwargs
+                )
+            ]
+
+        new_bot_messages: list[Message] = []
+        processed_types: set[MediaType] = set()
+        text_attached: bool = False
+
+        for type, files in media.items():
+            type = cast(MediaType, type)
+            files = cast(MediaValue, files)
+
+            if not files:
+                continue
+
+            processed_types.add(type)
+
+            if len(files) < MediaGroupLimit.MIN_MEDIA_LENGTH:
+                should_attach_text: bool = not any(
+                    len(media[other_type]) > 0  # type: ignore [literal-required]
+                    for other_type in media
+                    if other_type not in processed_types
+                )
+
+                send_file: Callable[..., Awaitable[Message]] = getattr(
+                    self.bot, f'send_{type}'
+                )
+
+                custom_kwargs: dict[str, Any] = kwargs.copy()
+                custom_kwargs[type] = files[0].media
+
+                if should_attach_text and not text_attached:
+                    custom_kwargs['caption'] = message_text
+                    custom_kwargs['reply_markup'] = keyboard
+                    text_attached = True
+
+                new_bot_messages.append(await send_file(**custom_kwargs))
+                continue
+
+            for start_index in range(0, len(files), MediaGroupLimit.MAX_MEDIA_LENGTH):
+                new_bot_messages.extend(
+                    await self.bot.send_media_group(
+                        media=files[
+                            start_index : start_index + MediaGroupLimit.MAX_MEDIA_LENGTH
+                        ],
+                        **kwargs,
+                    )
+                )
+
+        if not text_attached:
+            new_bot_messages.append(
+                await self.bot.send_message(
+                    text=message_text, reply_markup=keyboard, **kwargs
+                )
+            )
+
+        return new_bot_messages
+
+    async def prepare_media(
+        self, media_cls: type[IM], command_media: list[CM]
+    ) -> list[IM]:
+        return [
+            media_cls(str(SERVICE_URL / unquote(url[1:])))  # type: ignore [call-arg]
+            for file in command_media
+            if (url := file.url or file.from_url)
+        ]
+
     async def perform_command(
         self,
         command: service.models.Command,
@@ -278,31 +369,10 @@ class Bot:
                 }
             )
 
-        kwargs: dict[str, Any] = {'chat_id': chat_id}
         message_text: str = await replace_text_variables(
             await html.process_text(command.message.text), variables
         )
-        keyboard: (
-            ReplyKeyboardMarkup | InlineKeyboardMarkup | None
-        ) = await self._build_keyboard(command)
-
-        if command.settings.is_reply_to_user_message:
-            kwargs['reply_to_message_id'] = message_id
-
-        images: list[InputMediaPhoto] = [
-            InputMediaPhoto(str(SERVICE_URL / url[1:]))
-            for image in command.images
-            if (url := image.url or image.from_url)
-        ][:10]
-        files: list[InputMediaDocument] = [
-            InputMediaDocument(str(SERVICE_URL / url[1:]))
-            for file in command.files
-            if (url := file.url or file.from_url)
-        ][:10]
-
-        image_count: int = len(images)
-        file_count: int = len(files)
-        new_bot_messages: list[Message] = []
+        keyboard: ReplyMarkup | None = await self._build_keyboard(command)
 
         if (
             not command.settings.is_send_as_new_message
@@ -313,79 +383,23 @@ class Bot:
                 [last_message.id for last_message in self.last_messages.pop(chat_id)],
             )
 
-        if image_count == 1 and file_count == 1:
-            new_bot_messages += [
-                await self.bot.send_photo(photo=images[0].media, **kwargs),  # type: ignore [arg-type]
-                await self.bot.send_document(document=files[0].media, **kwargs),  # type: ignore [arg-type]
-                await self.bot.send_message(
-                    text=message_text, reply_markup=keyboard, **kwargs
-                ),
-            ]
-        elif image_count > 1 and file_count == 1:
-            new_bot_messages.extend(
-                await self.bot.send_media_group(media=images, **kwargs)
-            )
-            new_bot_messages.append(
-                await self.bot.send_document(
-                    document=files[0].media,  # type: ignore [arg-type]
-                    caption=message_text,
-                    reply_markup=keyboard,
-                    **kwargs,
-                )
-            )
-        elif image_count == 1 and file_count > 1:
-            new_bot_messages.extend(
-                await self.bot.send_media_group(media=files, **kwargs)
-            )
-            new_bot_messages.append(
-                await self.bot.send_photo(
-                    photo=images[0].media,  # type: ignore [arg-type]
-                    caption=message_text,
-                    reply_markup=keyboard,
-                    **kwargs,
-                )
-            )
-        elif image_count > 1 and file_count > 1:
-            new_bot_messages.extend(
-                await self.bot.send_media_group(media=images, **kwargs)
-            )
-            new_bot_messages.extend(
-                await self.bot.send_media_group(media=files, **kwargs)
-            )
-            new_bot_messages.append(
-                await self.bot.send_message(
-                    text=message_text, reply_markup=keyboard, **kwargs
-                )
-            )
-        elif image_count == 1:
-            new_bot_messages.append(
-                await self.bot.send_photo(
-                    photo=images[0].media,  # type: ignore [arg-type]
-                    caption=message_text,
-                    reply_markup=keyboard,
-                    **kwargs,
-                )
-            )
-        elif file_count == 1:
-            new_bot_messages.append(
-                await self.bot.send_document(
-                    document=files[0].media,  # type: ignore [arg-type]
-                    caption=message_text,
-                    reply_markup=keyboard,
-                    **kwargs,
-                )
-            )
-        else:
-            new_bot_messages.append(
-                await self.bot.send_message(
-                    text=message_text, reply_markup=keyboard, **kwargs
-                )
-            )
+        self.last_messages[chat_id] = await self.send_media_group(
+            chat_id=chat_id,
+            reply_to_message_id=message_id
+            if command.settings.is_reply_to_user_message
+            else None,
+            media=Media(
+                photo=await self.prepare_media(InputMediaPhoto, command.images),
+                document=await self.prepare_media(InputMediaDocument, command.files),
+                video=[],
+                audio=[],
+            ),
+            message_text=message_text,
+            keyboard=keyboard,
+        )
 
         if message_id and not user_is_bot and command.settings.is_delete_user_message:
             await self.bot.delete_message(chat_id, message_id)
-
-        self.last_messages[chat_id] = new_bot_messages
 
     async def handle_update(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
