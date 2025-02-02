@@ -32,7 +32,7 @@ import service.enums
 import service.models
 
 from .request import ResilientHTTPXRequest
-from .utils import process_text_with_html, replace_text_variables
+from .utils import html, replace_text_variables
 
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -95,7 +95,7 @@ class Bot:
 
         variables.update(
             {
-                variable.name: await process_text_with_html(variable.value)
+                variable.name: await html.process_text(variable.value)
                 for variable in await self.service_api.get_variables()
             }
         )
@@ -280,7 +280,7 @@ class Bot:
 
         kwargs: dict[str, Any] = {'chat_id': chat_id}
         message_text: str = await replace_text_variables(
-            await process_text_with_html(command.message.text), variables
+            await html.process_text(command.message.text), variables
         )
         keyboard: (
             ReplyKeyboardMarkup | InlineKeyboardMarkup | None
