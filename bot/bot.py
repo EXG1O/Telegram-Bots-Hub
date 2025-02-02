@@ -31,6 +31,7 @@ import service.base_models
 import service.enums
 import service.models
 
+from .request import ResilientHTTPXRequest
 from .utils import process_text_with_html, replace_text_variables
 
 from datetime import UTC, datetime, timedelta
@@ -47,6 +48,7 @@ class Bot:
             ApplicationBuilder()
             .token(token)
             .defaults(Defaults(parse_mode=ParseMode.HTML))
+            .request(ResilientHTTPXRequest(read_timeout=20))
             .updater(None)
             .build()
         )
