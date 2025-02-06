@@ -340,7 +340,7 @@ class Bot:
     ) -> list[IM]:
         return [
             media_cls(str(SERVICE_URL / unquote(url[1:])))  # type: ignore [call-arg]
-            for file in command_media
+            for file in sorted(command_media, key=lambda media: media.position)
             if (url := file.url or file.from_url)
         ]
 
