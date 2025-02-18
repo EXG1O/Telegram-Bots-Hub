@@ -9,6 +9,12 @@ import os
 load_dotenv()
 
 
+BASE_DIR: Final[Path] = Path(__file__).resolve().parent.parent
+LOGS_DIR: Final[Path] = BASE_DIR / 'logs'
+
+os.makedirs(LOGS_DIR, exist_ok=True)
+
+
 DEBUG: Final[bool] = os.getenv('DEBUG', 'True') == 'True'
 
 SELF_URL: Final[URL] = URL(os.environ['SELF_URL'])
