@@ -10,6 +10,8 @@ To install, execute the following commands:
 ```bash
 git clone https://github.com/EXG1O/Telegram-Bots-Hub.git
 cd Telegram-Bots-Hub
+python -m venv env
+source env/bin/activate
 source install.sh
 ```
 
