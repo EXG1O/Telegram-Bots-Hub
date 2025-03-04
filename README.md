@@ -3,7 +3,7 @@
 
 ## Requirements
 - Linux
-- Python 3.13.x
+- Python 3.12.x
 
 ## Installing
 To install, execute the following commands:
