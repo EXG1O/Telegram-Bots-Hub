@@ -390,7 +390,9 @@ class Bot:
             else None,
             media=Media(
                 photo=await self.prepare_media(InputMediaPhoto, command.images),
-                document=await self.prepare_media(InputMediaDocument, command.files),
+                document=await self.prepare_media(
+                    InputMediaDocument, command.documents
+                ),
                 video=[],
                 audio=[],
             ),

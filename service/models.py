@@ -49,7 +49,7 @@ class CommandImage(CommandMedia):
 
 
 @dataclass
-class CommandFile(CommandMedia):
+class CommandDocument(CommandMedia):
     pass
 
 
@@ -90,7 +90,7 @@ class Command:
     name: str
     settings: CommandSettings
     images: list[CommandImage]
-    files: list[CommandFile]
+    documents: list[CommandDocument]
     message: CommandMessage
     keyboard: CommandKeyboard | None
     api_request: CommandAPIRequest | None
