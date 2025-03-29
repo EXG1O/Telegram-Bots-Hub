@@ -32,14 +32,17 @@ from typing import Final
 
 config = Config(
     type_hooks={
-        ConnectionSourceObjectType: ConnectionSourceObjectType,
-        ConnectionTargetObjectType: ConnectionTargetObjectType,
-        APIRequestMethod: APIRequestMethod,
-        CommandKeyboardType: CommandKeyboardType,
-        ConditionPartType: ConditionPartType,
-        ConditionPartOperator: ConditionPartOperator,
-        ConditionPartNextPartOperator: ConditionPartNextPartOperator,
-        BackgroundTaskInterval: BackgroundTaskInterval,
+        cls: cls
+        for cls in [
+            ConnectionSourceObjectType,
+            ConnectionTargetObjectType,
+            APIRequestMethod,
+            CommandKeyboardType,
+            ConditionPartType,
+            ConditionPartOperator,
+            ConditionPartNextPartOperator,
+            BackgroundTaskInterval,
+        ]
     }
 )
 
@@ -70,12 +73,14 @@ class API:
     async def get_command_triggers(
         self, text: str | None = None
     ) -> list[CommandTrigger]:
-        url: URL = self.root_url / 'command-triggers/'
+        params: dict[str, str | int | float] = {}
 
         if text:
-            url = url.update_query({'text': text})
+            params['text'] = text
 
-        async with self.session.get(url) as response:
+        async with self.session.get(
+            self.root_url / 'command-triggers/', params=params
+        ) as response:
             return [
                 from_dict(CommandTrigger, data, config)
                 for data in await response.json()
@@ -84,16 +89,17 @@ class API:
     async def get_commands_keyboard_buttons(
         self, id: int | None = None, text: str | None = None
     ) -> list[CommandKeyboardButton]:
-        query_params: dict[str, str | int] = {}
-        url: URL = self.root_url / 'commands-keyboard-buttons/'
+        params: dict[str, str | int | float] = {}
 
         if id:
-            query_params['id'] = id
+            params['id'] = id
 
         if text:
-            query_params['text'] = text
+            params['text'] = text
 
-        async with self.session.get(url % query_params) as response:
+        async with self.session.get(
+            self.root_url / 'commands-keyboard-buttons/', params=params
+        ) as response:
             return [
                 from_dict(CommandKeyboardButton, data, config)
                 for data in await response.json()
