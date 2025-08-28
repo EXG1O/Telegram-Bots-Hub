@@ -61,6 +61,7 @@ class HTMLTextFormatter(HTMLParser):
         while self.stack:
             tag, start_index, end_index = self.stack.pop()
             self.result = self.result[:start_index] + self.result[end_index:]
+        self.result = self.result.removesuffix('\n')
         super().close()
 
     def reset(self) -> None:
@@ -69,7 +70,7 @@ class HTMLTextFormatter(HTMLParser):
         super().reset()
 
     async def __call__(self, data: str) -> str:
-        self.feed(data)
+        self.feed(data.replace('&nbsp;', ' '))
         self.close()
 
         result: str = self.result
@@ -79,4 +80,4 @@ class HTMLTextFormatter(HTMLParser):
         return result
 
 
-process_text = HTMLTextFormatter()
+process_html_text = HTMLTextFormatter()
