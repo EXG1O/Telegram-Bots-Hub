@@ -1,5 +1,6 @@
-from .base_models import APIRequest, CommandMedia
+from .base_models import CommandMedia
 from .enums import (
+    APIRequestMethod,
     BackgroundTaskInterval,
     CommandKeyboardType,
     ConditionPartNextPartOperator,
@@ -29,18 +30,30 @@ class Connection:
 
 
 @dataclass
-class CommandTrigger:
-    id: int
-    command_id: int
-    text: str
+class TriggerCommand:
+    command: str
+    payload: str | None
     description: str | None
 
 
 @dataclass
+class TriggerMessage:
+    text: str
+
+
+@dataclass
+class Trigger:
+    id: int
+    command: TriggerCommand | None
+    message: TriggerMessage | None
+    source_connections: list[Connection]
+
+
+@dataclass
 class CommandSettings:
-    is_reply_to_user_message: bool
-    is_delete_user_message: bool
-    is_send_as_new_message: bool
+    reply_to_user_message: bool
+    delete_user_message: bool
+    send_as_new_message: bool
 
 
 @dataclass
@@ -75,27 +88,13 @@ class CommandKeyboard:
 
 
 @dataclass
-class CommandAPIRequest(APIRequest):
-    pass
-
-
-@dataclass
-class CommandDatabaseRecord:
-    data: dict[str, Any]
-
-
-@dataclass
 class Command:
     id: int
-    name: str
     settings: CommandSettings
     images: list[CommandImage]
     documents: list[CommandDocument]
     message: CommandMessage
     keyboard: CommandKeyboard | None
-    api_request: CommandAPIRequest | None
-    database_record: CommandDatabaseRecord | None
-    target_connections: list[Connection]
 
 
 @dataclass
@@ -111,23 +110,46 @@ class ConditionPart:
 @dataclass
 class Condition:
     id: int
-    name: str
     parts: list[ConditionPart]
     source_connections: list[Connection]
-    target_connections: list[Connection]
-
-
-@dataclass
-class BackgroundTaskAPIRequest(APIRequest):
-    pass
 
 
 @dataclass
 class BackgroundTask:
     id: int
-    name: str
     interval: BackgroundTaskInterval
-    api_request: BackgroundTaskAPIRequest | None
+    source_connections: list[Connection]
+
+
+@dataclass
+class APIRequest:
+    id: int
+    url: str
+    method: APIRequestMethod
+    headers: dict[str, Any] | None
+    body: dict[str, Any] | list[Any] | None
+    source_connections: list[Connection]
+
+
+@dataclass
+class DatabaseCreateOperation:
+    data: dict[str, Any] | list[Any]
+
+
+@dataclass
+class DatabaseUpdateOperation:
+    overwrite: bool
+    lookup_field_name: str
+    lookup_field_value: str
+    create_if_not_found: bool
+    new_data: dict[str, Any] | list[Any]
+
+
+@dataclass
+class DatabaseOperation:
+    id: int
+    create_operation: DatabaseCreateOperation | None
+    update_operation: DatabaseUpdateOperation | None
     source_connections: list[Connection]
 
 
@@ -150,4 +172,4 @@ class User:
 @dataclass
 class DatabaseRecord:
     id: int
-    data: dict[str, Any]
+    data: dict[str, Any] | list[Any]

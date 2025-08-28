@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Request
 
 from telegram import Update
 from telegram.error import TelegramError
@@ -38,7 +38,7 @@ async def restart_bot(bot_service_id: BotServiceID) -> None:
     old_bot: Bot = bots[bot_service_id]
     await old_bot.stop()
 
-    bot = Bot(bot_service_id, old_bot.bot.token)
+    bot = Bot(bot_service_id, old_bot.telegram.token)
     bots[bot_service_id] = bot
 
     try:
@@ -55,12 +55,16 @@ async def stop_bot(bot_service_id: BotServiceID) -> None:
 @router.post(
     '/bots/{bot_service_id}/webhook/', dependencies=[Depends(verify_telegram_token)]
 )
-async def bot_webhook(bot_service_id: BotServiceID, request: Request) -> None:
+async def bot_webhook(
+    bot_service_id: BotServiceID, request: Request, background_tasks: BackgroundTasks
+) -> None:
     bot: Bot = bots[bot_service_id]
     update: Update | None = Update.de_json(await request.json(), bot.app.bot)
 
-    if update:
-        await bot.feed_webhook_update(update)
+    if not update:
+        return
+
+    background_tasks.add_task(bot.feed_webhook_update, update)
 
 
 router.include_router(bots_router)

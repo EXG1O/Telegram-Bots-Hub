@@ -1,10 +1,18 @@
-from typing import TypedDict
+from typing import Any, TypedDict
 
 
-class CreateUserData(TypedDict):
+class CreateUser(TypedDict):
     telegram_id: int
     full_name: str
 
 
 class CreateDatabaseRecord(TypedDict):
-    data: str
+    data: dict[str, Any] | list[Any]
+
+
+class UpdateDatabaseRecords(TypedDict):
+    data: dict[str, Any] | list[Any]
+
+
+class UpdateDatabaseRecord(TypedDict):
+    data: dict[str, Any] | list[Any]

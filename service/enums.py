@@ -2,14 +2,19 @@ from enum import Enum
 
 
 class ConnectionSourceObjectType(Enum):
+    TRIGGER = 'trigger'
     COMMAND_KEYBOARD_BUTTON = 'command_keyboard_button'
     CONDITION = 'condition'
     BACKGROUND_TASK = 'background_task'
+    API_REQUEST = 'api_request'
+    DATABASE_OPERATION = 'database_operation'
 
 
 class ConnectionTargetObjectType(Enum):
     COMMAND = 'command'
     CONDITION = 'condition'
+    API_REQUEST = 'api_request'
+    DATABASE_OPERATION = 'database_operation'
 
 
 class APIRequestMethod(Enum):

@@ -12,6 +12,7 @@ yarl = "^1.9.4"
 python-dotenv = "^1.0.1"
 python-telegram-bot = "^21.10"
 gunicorn = "^23.0.0"
+multidict = "^6.6.4"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.5.1"
