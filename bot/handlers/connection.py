@@ -52,18 +52,18 @@ class ConnectionHandler(BaseHandler[Connection]):
     async def handle(
         self, update: Update, connection: Connection, variables: Variables
     ) -> None:
-        self_variables: Variables = copy(variables)
+        variables = copy(variables)
         object: Any = await self.fetchers[connection.target_object_type](
             connection.target_object_id
         )
         connections: list[Connection] | None = await self.handlers[
             connection.target_object_type
-        ].handle(update, object, self_variables)
+        ].handle(update, object, variables)
 
         if not connections:
             return
 
-        await self.handle_many(update, connections, self_variables)
+        await self.handle_many(update, connections, variables)
 
     async def handle_many(
         self, update: Update, connections: list[Connection], variables: Variables
