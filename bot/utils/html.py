@@ -26,6 +26,13 @@ class HTMLTextFormatter(HTMLParser):
         result: str
         stack: list[tuple[str, int, int]]
 
+    def __call__(self, data: str) -> str:
+        self.feed(data.replace('&nbsp;', ' '))
+        self.close()
+        result: str = self.result
+        self.reset()
+        return result
+
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         if tag in SELF_CLOSING_TAGS:
             return
@@ -68,16 +75,6 @@ class HTMLTextFormatter(HTMLParser):
         self.stack = []
         self.result = ''
         super().reset()
-
-    async def __call__(self, data: str) -> str:
-        self.feed(data.replace('&nbsp;', ' '))
-        self.close()
-
-        result: str = self.result
-
-        self.reset()
-
-        return result
 
 
 process_html_text = HTMLTextFormatter()
