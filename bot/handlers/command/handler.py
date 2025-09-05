@@ -123,9 +123,7 @@ class CommandHandler(BaseHandler[Command]):
         photos, documents, message_text, keyboard = await asyncio.gather(
             prepare_media(InputMediaPhoto, command.images),
             prepare_media(InputMediaDocument, command.documents),
-            replace_text_variables(
-                await process_html_text(command.message.text), variables
-            ),
+            replace_text_variables(process_html_text(command.message.text), variables),
             build_keyboard(command),
         )
 
