@@ -2,6 +2,8 @@ from telegram import Message, User
 
 from service.models import DatabaseRecord, Variable
 
+from .utils import process_html_text
+
 from typing import TYPE_CHECKING, Any, Self
 
 if TYPE_CHECKING:
@@ -44,7 +46,7 @@ class Variables:
 
     async def _get_self_variable(self, name: str) -> str | None:
         variables: list[Variable] = await self.bot.service_api.get_variables(name=name)
-        return variables[0].value if variables else None
+        return process_html_text(variables[0].value) if variables else None
 
     async def _get_database_record(self, path: str) -> Any | None:
         records: list[DatabaseRecord] = await self.bot.service_api.get_database_records(
