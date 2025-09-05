@@ -19,13 +19,15 @@ class Variables:
         self.bot = bot
         self.user = user
         self.message = message
-        self.store: dict[str, Any] = {
+
+        self.store: dict[str, Any] = {}
+        self.system_store: dict[str, Any] = {
             'BOT_NAME': bot.telegram.bot.full_name,
             'BOT_USERNAME': bot.telegram.bot.username,
         }
 
         if user:
-            self.store.update(
+            self.system_store.update(
                 {
                     'USER_ID': user.id,
                     'USER_USERNAME': user.username,
@@ -36,7 +38,7 @@ class Variables:
                 }
             )
         if message:
-            self.store.update(
+            self.system_store.update(
                 {
                     'USER_MESSAGE_ID': message.message_id,
                     'USER_MESSAGE_TEXT': message.text,
@@ -44,7 +46,12 @@ class Variables:
                 }
             )
 
-    async def _get_self_variable(self, name: str) -> str | None:
+    def __copy__(self) -> Self:
+        obj = self.__class__(self.bot, self.user, self.message)
+        obj.store = self.store.copy()
+        return obj
+
+    async def _get_user_variable(self, name: str) -> str | None:
         variables: list[Variable] = await self.bot.service_api.get_variables(name=name)
         return process_html_text(variables[0].value) if variables else None
 
@@ -65,8 +72,10 @@ class Variables:
     async def get(self, key: str) -> Any | None:
         prefix, _, nested_key = key.partition('.')
 
-        if prefix == 'SELF':
-            return await self._get_self_variable(nested_key)
+        if prefix == 'SYSTEM':
+            return self.system_store.get(nested_key)
+        elif prefix == 'USER':
+            return await self._get_user_variable(nested_key)
         elif prefix == 'DATABASE':
             return await self._get_database_record(nested_key)
         elif (
@@ -80,8 +89,3 @@ class Variables:
 
     def add(self, key: str, value: Any) -> None:
         self.store[key] = value
-
-    def __copy__(self) -> Self:
-        obj = self.__class__(self.bot, self.user, self.message)
-        obj.store = self.store.copy()
-        return obj
