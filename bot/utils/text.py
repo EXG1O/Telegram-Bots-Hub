@@ -5,7 +5,7 @@ import asyncio
 import re
 
 VARIABLE_PATTERN: Final[re.Pattern[str]] = re.compile(
-    r'\{\{\s*(\w+(?:\.\w+)*)\s*\}\}', re.IGNORECASE
+    r'\{\{\s*(\w+(?:(?:\.|\s+)\w+)*)\s*\}\}', re.IGNORECASE
 )
 
 
