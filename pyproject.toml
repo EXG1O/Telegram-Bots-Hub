@@ -50,7 +50,7 @@ ignore = [
 section-order = [
     "future",
     "fastapi",
-    "aiogram",
+    "telegram",
     "third-party",
     "first-party",
     "local-folder",
@@ -60,7 +60,7 @@ from-first = true
 
 [tool.ruff.lint.isort.sections]
 fastapi = ["fastapi"]
-aiogram = ["aiogram"]
+telegram = ["telegram"]
 
 [tool.ruff.format]
 quote-style = "single"
