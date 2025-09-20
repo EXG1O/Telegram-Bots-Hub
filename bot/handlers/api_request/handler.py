@@ -1,3 +1,5 @@
+from telegram import Update
+
 from aiohttp import (
     ClientError,
     ClientSession,
@@ -6,7 +8,6 @@ from aiohttp import (
     TCPConnector,
 )
 from multidict import CIMultiDict
-from telegram import Update
 
 from service.models import APIRequest, Connection
 
