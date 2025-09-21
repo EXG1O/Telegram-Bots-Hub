@@ -88,19 +88,16 @@ class UpdateHandler:
         message: Message | None = update.effective_message
         callback_query: CallbackQuery | None = update.callback_query
 
-        if not (message and message.text) and not (
-            callback_query and callback_query.data and callback_query.data.isdigit()
-        ):
-            return []
+        buttons: list[CommandKeyboardButton] = []
 
-        buttons: list[
-            CommandKeyboardButton
-        ] = await self.bot.service_api.get_commands_keyboard_buttons(
-            id=int(callback_query.data)
-            if callback_query and callback_query.data
-            else None,
-            text=message.text if message else None,
-        )
+        if callback_query and callback_query.data and callback_query.data.isdigit():
+            buttons = await self.bot.service_api.get_commands_keyboard_buttons(
+                id=int(callback_query.data)
+            )
+        elif message and message.text:
+            buttons = await self.bot.service_api.get_commands_keyboard_buttons(
+                text=message.text
+            )
 
         return list(
             chain.from_iterable(button.source_connections for button in buttons)
