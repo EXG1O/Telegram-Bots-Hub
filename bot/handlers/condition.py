@@ -25,9 +25,15 @@ class ConditionHandler(BaseHandler[Condition]):
             )
 
             if part.operator == ConditionPartOperator.EQUAL:
-                current_result = first_value == second_value
+                if isinstance(first_value, bool) and isinstance(second_value, bool):
+                    current_result = first_value is second_value
+                else:
+                    current_result = first_value == second_value
             elif part.operator == ConditionPartOperator.NOT_EQUAL:
-                current_result = first_value != second_value
+                if isinstance(first_value, bool) and isinstance(second_value, bool):
+                    current_result = first_value is not second_value
+                else:
+                    current_result = first_value != second_value
             elif not isinstance(first_value, str) and not isinstance(second_value, str):
                 if part.operator == ConditionPartOperator.GREATER:
                     current_result = first_value > second_value
