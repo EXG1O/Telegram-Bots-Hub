@@ -3,7 +3,7 @@ from telegram import Update
 from service.enums import ConditionPartNextPartOperator, ConditionPartOperator
 from service.models import Condition, Connection
 
-from ..utils import replace_text_variables
+from ..utils import deserialize_text, replace_text_variables
 from ..variables import Variables
 from .base import BaseHandler
 
