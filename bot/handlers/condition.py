@@ -3,7 +3,7 @@ from telegram import Update
 from service.enums import ConditionPartNextPartOperator, ConditionPartOperator
 from service.models import Condition, Connection
 
-from ..utils import deserialize_text, replace_text_variables
+from ..utils import replace_text_variables
 from ..variables import Variables
 from .base import BaseHandler
 
@@ -19,12 +19,10 @@ class ConditionHandler(BaseHandler[Condition]):
         for part in condition.parts:
             current_result: bool = False
 
-            raw_first_value, raw_second_value = await asyncio.gather(
-                replace_text_variables(part.first_value, variables),
-                replace_text_variables(part.second_value, variables),
+            first_value, second_value = await asyncio.gather(
+                replace_text_variables(part.first_value, variables, deserialize=True),
+                replace_text_variables(part.second_value, variables, deserialize=True),
             )
-            first_value: str | int | float | bool = deserialize_text(raw_first_value)
-            second_value: str | int | float | bool = deserialize_text(raw_second_value)
 
             if part.operator == ConditionPartOperator.EQUAL:
                 current_result = first_value == second_value
