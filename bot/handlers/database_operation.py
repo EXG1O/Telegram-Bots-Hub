@@ -9,24 +9,15 @@ from service.models import (
 )
 from service.schemas import CreateDatabaseRecord, UpdateDatabaseRecords
 
-from ..utils import replace_text_variables
+from ..utils import replace_data_variables, replace_text_variables
 from ..variables import Variables
 from .base import BaseHandler
 
-from typing import Any
+import asyncio
 import json
 
 
 class DatabaseOperationHandler(BaseHandler[DatabaseOperation]):
-    async def _create_record(self, data: Any, variables: Variables) -> DatabaseRecord:
-        return await self.bot.service_api.create_database_record(
-            CreateDatabaseRecord(
-                data=json.loads(
-                    await replace_text_variables(json.dumps(data), variables)
-                )
-            )
-        )
-
     async def handle(
         self,
         update: Update,
@@ -41,22 +32,40 @@ class DatabaseOperationHandler(BaseHandler[DatabaseOperation]):
         )
 
         if create_operation:
-            await self._create_record(create_operation.data, variables)
-        elif update_operation:
-            await self.bot.service_api.update_database_records(
-                UpdateDatabaseRecords(
-                    data=json.loads(
-                        await replace_text_variables(
-                            json.dumps(update_operation.new_data), variables
-                        )
+            await self.bot.service_api.create_database_record(
+                CreateDatabaseRecord(
+                    data=await replace_data_variables(
+                        create_operation.data, variables, deserialize=True
                     )
+                )
+            )
+        elif update_operation:
+            data, lookup_field_value = await asyncio.gather(
+                replace_data_variables(
+                    update_operation.new_data, variables, deserialize=True
                 ),
+                replace_text_variables(
+                    update_operation.lookup_field_value,
+                    variables,
+                    deserialize=True,
+                ),
+            )
+
+            records: list[
+                DatabaseRecord
+            ] = await self.bot.service_api.update_database_records(
+                UpdateDatabaseRecords(data=data),
                 partial=not update_operation.overwrite,
                 search=(
                     f'"{update_operation.lookup_field_name}": '
-                    + json.dumps(update_operation.lookup_field_value)
+                    + json.dumps(lookup_field_value)
                 ),
             )
+
+            if not records and update_operation.create_if_not_found:
+                await self.bot.service_api.create_database_record(
+                    CreateDatabaseRecord(data=data)
+                )
         else:
             return None
 
