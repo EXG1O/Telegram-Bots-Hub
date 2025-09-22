@@ -3,14 +3,14 @@
 
 ## Requirements
 - Linux
-- Python 3.12.x
+- Python 3.12
 
 ## Installing
 To install, execute the following commands:
 ```bash
 git clone https://github.com/EXG1O/Telegram-Bots-Hub.git
 cd Telegram-Bots-Hub
-git checkout $(git describe --tags --abbrev=0)
+git checkout tags/v2.0.0
 python -m venv env
 source env/bin/activate
 source install.sh
