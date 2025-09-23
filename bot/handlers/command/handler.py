@@ -64,7 +64,7 @@ class CommandHandler(BaseHandler[Command]):
                 )
 
                 send_file: Callable[..., Awaitable[Message]] = getattr(
-                    self.bot, f'send_{type}'
+                    self.bot.telegram, f'send_{type}'
                 )
 
                 custom_kwargs: dict[str, Any] = kwargs.copy()
