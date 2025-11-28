@@ -1,8 +1,9 @@
-from telegram import CallbackQuery, Message, Update
+from telegram import CallbackQuery, Chat, Message, Update, User
 from telegram.ext import ContextTypes
 
 from service.models import CommandKeyboardButton, Connection, Trigger
 
+from ..storage import EventStorage
 from ..utils import replace_text_variables
 from ..variables import Variables
 from .connection import ConnectionHandler
@@ -104,7 +105,16 @@ class UpdateHandler:
         )
 
     async def handle(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        chat: Chat | None = update.effective_chat
+        user: User | None = update.effective_user
+
+        event_storage = EventStorage(
+            bot_id=self.bot.telegram.id,
+            chat_id=user.id if user else None,
+            user_id=chat.id if chat else None,
+        )
         variables = Variables(self.bot, update.effective_user, update.effective_message)
+
         await self.connection_handler.handle_many(
             update,
             list(
@@ -117,5 +127,6 @@ class UpdateHandler:
                     )
                 )
             ),
+            event_storage,
             variables,
         )

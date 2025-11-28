@@ -1,4 +1,4 @@
-from telegram import BotCommand, Message, Update
+from telegram import BotCommand, Update
 from telegram.constants import ParseMode, UpdateType
 from telegram.ext import (
     ApplicationBuilder,
@@ -15,6 +15,7 @@ from service.models import Trigger
 
 from .handlers.update import UpdateHandler
 from .request import ResilientHTTPXRequest
+from .storage import Storage
 from .tasks import TaskManager
 from .utils import is_valid_user
 
@@ -38,9 +39,9 @@ class Bot:
         self.telegram = self.app.bot
         self.service_id = service_id
         self.service_api = API(service_id)
+        self.storage = Storage(bot_id=int(token.split(':')[0]))
         self.update_handler = UpdateHandler(self)
         self.task_manager = TaskManager(self)
-        self.last_messages: dict[int, list[Message]] = {}
 
     async def feed_webhook_update(self, update: Update) -> None:
         if not await is_valid_user(self, update.effective_user):

@@ -3,6 +3,7 @@ from telegram import Update
 from service.enums import ConnectionTargetObjectType
 from service.models import Connection
 
+from ..storage import EventStorage
 from ..variables import Variables
 from .api_request import APIRequestHandler
 from .base import BaseHandler
@@ -50,7 +51,11 @@ class ConnectionHandler(BaseHandler[Connection]):
         }
 
     async def handle(
-        self, update: Update, connection: Connection, variables: Variables
+        self,
+        update: Update,
+        connection: Connection,
+        event_storage: EventStorage,
+        variables: Variables,
     ) -> None:
         variables = copy(variables)
         object: Any = await self.fetchers[connection.target_object_type](
@@ -58,16 +63,23 @@ class ConnectionHandler(BaseHandler[Connection]):
         )
         connections: list[Connection] | None = await self.handlers[
             connection.target_object_type
-        ].handle(update, object, variables)
+        ].handle(update, object, event_storage, variables)
 
         if not connections:
             return
 
-        await self.handle_many(update, connections, variables)
+        await self.handle_many(update, connections, event_storage, variables)
 
     async def handle_many(
-        self, update: Update, connections: list[Connection], variables: Variables
+        self,
+        update: Update,
+        connections: list[Connection],
+        event_storage: EventStorage,
+        variables: Variables,
     ) -> None:
         await asyncio.gather(
-            *[self.handle(update, connection, variables) for connection in connections]
+            *[
+                self.handle(update, connection, event_storage, variables)
+                for connection in connections
+            ]
         )

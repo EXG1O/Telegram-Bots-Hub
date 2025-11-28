@@ -11,6 +11,7 @@ from telegram.constants import MediaGroupLimit
 
 from service.models import Command
 
+from ...storage import EventStorage
 from ...utils import process_html_text, replace_text_variables
 from ...variables import Variables
 from ..base import BaseHandler
@@ -98,25 +99,25 @@ class CommandHandler(BaseHandler[Command]):
         return new_bot_messages
 
     async def handle(
-        self, update: Update, command: Command, variables: Variables
+        self,
+        update: Update,
+        command: Command,
+        event_storage: EventStorage,
+        variables: Variables,
     ) -> None:
         chat: Chat | None = update.effective_chat
         user: User | None = update.effective_user
 
-        if not chat or not user:
+        if not event_storage.chat or not chat or not user:
             return
 
-        if (
-            not command.settings.send_as_new_message
-            and chat.id in self.bot.last_messages
-        ):
-            last_messages: list[Message] = self.bot.last_messages.pop(chat.id)
+        if not command.settings.send_as_new_message:
+            last_bot_message_ids: list[int] | None = await event_storage.chat.pop(
+                'last_bot_message_ids'
+            )
 
-            if last_messages:
-                await self.bot.telegram.delete_messages(
-                    chat.id,
-                    [last_message.id for last_message in last_messages],
-                )
+            if last_bot_message_ids:
+                await self.bot.telegram.delete_messages(chat.id, last_bot_message_ids)
 
         message: Message | None = update.effective_message
         message_id: int | None = message.message_id if message else None
@@ -127,7 +128,7 @@ class CommandHandler(BaseHandler[Command]):
             build_keyboard(command),
         )
 
-        self.bot.last_messages[chat.id] = await self._send_media_group(
+        last_bot_messages: list[Message] = await self._send_media_group(
             chat_id=chat.id,
             reply_to_message_id=message_id
             if command.settings.reply_to_user_message
@@ -135,6 +136,10 @@ class CommandHandler(BaseHandler[Command]):
             media=Media(photo=photos, document=documents, video=[], audio=[]),
             message_text=message_text,
             keyboard=keyboard,
+        )
+        await event_storage.chat.set(
+            'last_bot_message_ids',
+            [last_bot_message.id for last_bot_message in last_bot_messages],
         )
 
         if message_id and not user.is_bot and command.settings.delete_user_message:

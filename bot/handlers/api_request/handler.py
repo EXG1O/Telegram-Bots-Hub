@@ -10,6 +10,7 @@ from aiohttp import (
 
 from service.models import APIRequest, Connection
 
+from ...storage import EventStorage
 from ...utils import replace_data_variables
 from ...variables import Variables
 from ..base import BaseHandler
@@ -19,7 +20,11 @@ from .utils import get_safe_headers, parse_response_body
 
 class APIRequestHandler(BaseHandler[APIRequest]):
     async def handle(
-        self, update: Update, api_request: APIRequest, variables: Variables
+        self,
+        update: Update,
+        api_request: APIRequest,
+        event_storage: EventStorage,
+        variables: Variables,
     ) -> list[Connection] | None:
         try:
             async with ClientSession(

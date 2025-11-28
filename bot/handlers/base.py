@@ -2,6 +2,7 @@ from telegram import Update
 
 from service.models import Connection
 
+from ..storage import EventStorage
 from ..variables import Variables
 
 from abc import ABC, abstractmethod
@@ -19,5 +20,5 @@ class BaseHandler[T](ABC):
 
     @abstractmethod
     async def handle(
-        self, update: Update, obj: T, variables: Variables
+        self, update: Update, obj: T, event_storage: EventStorage, variables: Variables
     ) -> list[Connection] | None: ...
