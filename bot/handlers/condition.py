@@ -3,6 +3,7 @@ from telegram import Update
 from service.enums import ConditionPartNextPartOperator, ConditionPartOperator
 from service.models import Condition, Connection
 
+from ..storage import EventStorage
 from ..utils import replace_text_variables
 from ..variables import Variables
 from .base import BaseHandler
@@ -12,7 +13,11 @@ import asyncio
 
 class ConditionHandler(BaseHandler[Condition]):
     async def handle(
-        self, update: Update, condition: Condition, variables: Variables
+        self,
+        update: Update,
+        condition: Condition,
+        event_storage: EventStorage,
+        variables: Variables,
     ) -> list[Connection] | None:
         result: bool | None = None
 

@@ -9,6 +9,7 @@ from service.models import (
 )
 from service.schemas import CreateDatabaseRecord, UpdateDatabaseRecords
 
+from ..storage import EventStorage
 from ..utils import replace_data_variables, replace_text_variables
 from ..variables import Variables
 from .base import BaseHandler
@@ -22,6 +23,7 @@ class DatabaseOperationHandler(BaseHandler[DatabaseOperation]):
         self,
         update: Update,
         database_operation: DatabaseOperation,
+        event_storage: EventStorage,
         variables: Variables,
     ) -> list[Connection] | None:
         create_operation: DatabaseCreateOperation | None = (

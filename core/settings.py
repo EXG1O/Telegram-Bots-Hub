@@ -17,6 +17,8 @@ os.makedirs(LOGS_DIR, exist_ok=True)
 
 DEBUG: Final[bool] = os.getenv('DEBUG', 'True') == 'True'
 
+REDIS_URL: Final[str] = os.environ['REDIS_URL']
+
 SELF_URL: Final[URL] = URL(os.environ['SELF_URL'])
 SELF_TOKEN: Final[str] = os.environ['SELF_TOKEN']
 TELEGRAM_TOKEN: Final[str] = token_hex(32)
