@@ -1,4 +1,4 @@
-from telegram import BotCommand, InputMedia, Message, Update
+from telegram import BotCommand, Message, Update
 from telegram.constants import ParseMode, UpdateType
 from telegram.ext import (
     ApplicationBuilder,
@@ -11,7 +11,6 @@ from telegram.ext import (
 from core.settings import SELF_URL, TELEGRAM_TOKEN
 from core.storage import bots
 from service import API
-from service.base_models import CommandMedia
 from service.models import Trigger
 
 from .handlers.update import UpdateHandler
@@ -19,12 +18,9 @@ from .request import ResilientHTTPXRequest
 from .tasks import TaskManager
 from .utils import is_valid_user
 
-from typing import Final, TypeVar
+from typing import Final
 import re
 import string
-
-IM = TypeVar('IM', bound=InputMedia)
-CM = TypeVar('CM', bound=CommandMedia)
 
 COMMAND_CLEANUP_PATTERN: Final[re.Pattern[str]] = re.compile(f'[{string.punctuation}]')
 
