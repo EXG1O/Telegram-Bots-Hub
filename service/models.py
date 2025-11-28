@@ -14,13 +14,13 @@ from dataclasses import dataclass
 from typing import Any
 
 
-@dataclass
+@dataclass(frozen=True)
 class Bot:
     id: int
     is_private: bool
 
 
-@dataclass
+@dataclass(frozen=True)
 class Connection:
     id: int
     source_object_type: ConnectionSourceObjectType
@@ -29,19 +29,19 @@ class Connection:
     target_object_id: int
 
 
-@dataclass
+@dataclass(frozen=True)
 class TriggerCommand:
     command: str
     payload: str | None
     description: str | None
 
 
-@dataclass
+@dataclass(frozen=True)
 class TriggerMessage:
     text: str
 
 
-@dataclass
+@dataclass(frozen=True)
 class Trigger:
     id: int
     command: TriggerCommand | None
@@ -49,29 +49,29 @@ class Trigger:
     source_connections: list[Connection]
 
 
-@dataclass
+@dataclass(frozen=True)
 class CommandSettings:
     reply_to_user_message: bool
     delete_user_message: bool
     send_as_new_message: bool
 
 
-@dataclass
+@dataclass(frozen=True)
 class CommandImage(CommandMedia):
     pass
 
 
-@dataclass
+@dataclass(frozen=True)
 class CommandDocument(CommandMedia):
     pass
 
 
-@dataclass
+@dataclass(frozen=True)
 class CommandMessage:
     text: str
 
 
-@dataclass
+@dataclass(frozen=True)
 class CommandKeyboardButton:
     id: int
     row: int
@@ -81,13 +81,13 @@ class CommandKeyboardButton:
     source_connections: list[Connection]
 
 
-@dataclass
+@dataclass(frozen=True)
 class CommandKeyboard:
     type: CommandKeyboardType
     buttons: list[CommandKeyboardButton]
 
 
-@dataclass
+@dataclass(frozen=True)
 class Command:
     id: int
     settings: CommandSettings
@@ -97,7 +97,7 @@ class Command:
     keyboard: CommandKeyboard | None
 
 
-@dataclass
+@dataclass(frozen=True)
 class ConditionPart:
     id: int
     type: ConditionPartType
@@ -107,21 +107,21 @@ class ConditionPart:
     next_part_operator: ConditionPartNextPartOperator | None
 
 
-@dataclass
+@dataclass(frozen=True)
 class Condition:
     id: int
     parts: list[ConditionPart]
     source_connections: list[Connection]
 
 
-@dataclass
+@dataclass(frozen=True)
 class BackgroundTask:
     id: int
     interval: BackgroundTaskInterval
     source_connections: list[Connection]
 
 
-@dataclass
+@dataclass(frozen=True)
 class APIRequest:
     id: int
     url: str
@@ -131,12 +131,12 @@ class APIRequest:
     source_connections: list[Connection]
 
 
-@dataclass
+@dataclass(frozen=True)
 class DatabaseCreateOperation:
     data: dict[str, Any] | list[Any]
 
 
-@dataclass
+@dataclass(frozen=True)
 class DatabaseUpdateOperation:
     overwrite: bool
     lookup_field_name: str
@@ -145,7 +145,7 @@ class DatabaseUpdateOperation:
     new_data: dict[str, Any] | list[Any]
 
 
-@dataclass
+@dataclass(frozen=True)
 class DatabaseOperation:
     id: int
     create_operation: DatabaseCreateOperation | None
@@ -153,14 +153,14 @@ class DatabaseOperation:
     source_connections: list[Connection]
 
 
-@dataclass
+@dataclass(frozen=True)
 class Variable:
     id: int
     name: str
     value: str
 
 
-@dataclass
+@dataclass(frozen=True)
 class User:
     id: int
     telegram_id: int
@@ -169,7 +169,7 @@ class User:
     is_blocked: bool
 
 
-@dataclass
+@dataclass(frozen=True)
 class DatabaseRecord:
     id: int
     data: dict[str, Any] | list[Any]
