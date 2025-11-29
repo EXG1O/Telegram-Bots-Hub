@@ -97,6 +97,8 @@ class API:
         has_command_payload: bool | None = None,
         has_command_description: bool | None = None,
         has_message: bool | None = None,
+        has_message_text: bool | None = None,
+        has_target_connections: bool | None = None,
     ) -> list[Trigger]:
         params: dict[str, str] = {}
 
@@ -112,6 +114,10 @@ class API:
             params['has_command_description'] = str(has_command_description)
         if has_message is not None:
             params['has_message'] = str(has_message)
+        if has_message_text is not None:
+            params['has_message_text'] = str(has_message_text)
+        if has_target_connections is not None:
+            params['has_target_connections'] = str(has_target_connections)
 
         async with self.session.get(
             self.root_url / 'triggers/', params=params

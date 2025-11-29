@@ -9,7 +9,7 @@ from telegram import (
 from telegram._utils.types import ReplyMarkup
 from telegram.constants import MediaGroupLimit
 
-from service.models import Command
+from service.models import Command, Connection
 
 from ...storage import EventStorage
 from ...utils import process_html_text, replace_text_variables
@@ -104,12 +104,12 @@ class CommandHandler(BaseHandler[Command]):
         command: Command,
         event_storage: EventStorage,
         variables: Variables,
-    ) -> None:
+    ) -> list[Connection] | None:
         chat: Chat | None = update.effective_chat
         user: User | None = update.effective_user
 
         if not event_storage.chat or not chat or not user:
-            return
+            return None
 
         if not command.settings.send_as_new_message:
             last_bot_message_ids: list[int] | None = await event_storage.chat.pop(
@@ -144,3 +144,5 @@ class CommandHandler(BaseHandler[Command]):
 
         if message_id and not user.is_bot and command.settings.delete_user_message:
             await self.bot.telegram.delete_message(chat.id, message_id)
+
+        return command.source_connections

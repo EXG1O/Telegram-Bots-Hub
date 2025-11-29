@@ -38,7 +38,7 @@ class TriggerCommand:
 
 @dataclass(frozen=True)
 class TriggerMessage:
-    text: str
+    text: str | None
 
 
 @dataclass(frozen=True)
@@ -95,6 +95,7 @@ class Command:
     documents: list[CommandDocument]
     message: CommandMessage
     keyboard: CommandKeyboard | None
+    source_connections: list[Connection]
 
 
 @dataclass(frozen=True)

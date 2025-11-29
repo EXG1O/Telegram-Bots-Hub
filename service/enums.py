@@ -3,6 +3,7 @@ from enum import Enum
 
 class ConnectionSourceObjectType(Enum):
     TRIGGER = 'trigger'
+    COMMAND = 'command'
     COMMAND_KEYBOARD_BUTTON = 'command_keyboard_button'
     CONDITION = 'condition'
     BACKGROUND_TASK = 'background_task'
@@ -11,6 +12,7 @@ class ConnectionSourceObjectType(Enum):
 
 
 class ConnectionTargetObjectType(Enum):
+    TRIGGER = 'trigger'
     COMMAND = 'command'
     CONDITION = 'condition'
     API_REQUEST = 'api_request'
