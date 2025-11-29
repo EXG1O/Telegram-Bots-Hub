@@ -115,11 +115,7 @@ class TaskManager:
                 except Exception:
                     pass  # FIXME: In the future, error logging will be added here.
 
-            await self.bot.storage.set(
-                'background_tasks',
-                background_tasks,
-                expiry=2592000,  # 30 days
-            )
+            await self.bot.storage.set('background_tasks', background_tasks)
 
     async def start(self) -> None:
         self.tasks.add(asyncio.create_task(self._monitor_token()))

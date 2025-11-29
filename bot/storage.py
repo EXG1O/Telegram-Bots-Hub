@@ -43,10 +43,15 @@ class Storage:
         await redis.set(self.redis_key, json.dumps(data))
         return value
 
-    async def set(self, key: str, value: Any, expiry: int | None = None) -> None:
+    async def set(self, key: str, value: Any) -> None:
         data: dict[str, Any] = await self.get_data()
         data[key] = value
-        await redis.set(self.redis_key, json.dumps(data), ex=expiry)
+        await redis.set(self.redis_key, json.dumps(data))
+
+    async def delete(self, key: str) -> None:
+        data: dict[str, Any] = await self.get_data()
+        del data[key]
+        await redis.set(self.redis_key, json.dumps(data))
 
 
 class EventStorage:
