@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
-class CommandMedia:
+class MessageMedia:
     id: int
     position: int
     name: str | None

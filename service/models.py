@@ -1,13 +1,13 @@
-from .base_models import CommandMedia
+from .base_models import MessageMedia
 from .enums import (
     APIRequestMethod,
     BackgroundTaskInterval,
-    CommandKeyboardType,
     ConditionPartNextPartOperator,
     ConditionPartOperator,
     ConditionPartType,
     ConnectionSourceObjectType,
     ConnectionTargetObjectType,
+    MessageKeyboardType,
 )
 
 from dataclasses import dataclass
@@ -50,29 +50,24 @@ class Trigger:
 
 
 @dataclass(frozen=True)
-class CommandSettings:
+class MessageSettings:
     reply_to_user_message: bool
     delete_user_message: bool
     send_as_new_message: bool
 
 
 @dataclass(frozen=True)
-class CommandImage(CommandMedia):
+class MessageImage(MessageMedia):
     pass
 
 
 @dataclass(frozen=True)
-class CommandDocument(CommandMedia):
+class MessageDocument(MessageMedia):
     pass
 
 
 @dataclass(frozen=True)
-class CommandMessage:
-    text: str
-
-
-@dataclass(frozen=True)
-class CommandKeyboardButton:
+class MessageKeyboardButton:
     id: int
     row: int
     position: int
@@ -82,19 +77,19 @@ class CommandKeyboardButton:
 
 
 @dataclass(frozen=True)
-class CommandKeyboard:
-    type: CommandKeyboardType
-    buttons: list[CommandKeyboardButton]
+class MessageKeyboard:
+    type: MessageKeyboardType
+    buttons: list[MessageKeyboardButton]
 
 
 @dataclass(frozen=True)
-class Command:
+class Message:
     id: int
-    settings: CommandSettings
-    images: list[CommandImage]
-    documents: list[CommandDocument]
-    message: CommandMessage
-    keyboard: CommandKeyboard | None
+    text: str
+    settings: MessageSettings
+    images: list[MessageImage]
+    documents: list[MessageDocument]
+    keyboard: MessageKeyboard | None
     source_connections: list[Connection]
 
 

@@ -3,8 +3,8 @@ from enum import Enum
 
 class ConnectionSourceObjectType(Enum):
     TRIGGER = 'trigger'
-    COMMAND = 'command'
-    COMMAND_KEYBOARD_BUTTON = 'command_keyboard_button'
+    MESSAGE = 'message'
+    MESSAGE_KEYBOARD_BUTTON = 'message_keyboard_button'
     CONDITION = 'condition'
     BACKGROUND_TASK = 'background_task'
     API_REQUEST = 'api_request'
@@ -13,7 +13,7 @@ class ConnectionSourceObjectType(Enum):
 
 class ConnectionTargetObjectType(Enum):
     TRIGGER = 'trigger'
-    COMMAND = 'command'
+    MESSAGE = 'message'
     CONDITION = 'condition'
     API_REQUEST = 'api_request'
     DATABASE_OPERATION = 'database_operation'
@@ -27,7 +27,7 @@ class APIRequestMethod(Enum):
     DELETE = 'delete'
 
 
-class CommandKeyboardType(Enum):
+class MessageKeyboardType(Enum):
     DEFAULT = 'default'
     INLINE = 'inline'
     PAYMENT = 'payment'

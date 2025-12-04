@@ -6,40 +6,37 @@ from telegram import (
 )
 
 from core.settings import SERVICE_URL
-from service.base_models import CommandMedia
-from service.enums import CommandKeyboardType
-from service.models import Command, CommandKeyboardButton
+from service.base_models import MessageMedia
+from service.enums import MessageKeyboardType
+from service.models import MessageKeyboard, MessageKeyboardButton
 
 from urllib.parse import unquote
 
 
-async def prepare_media[IM: InputMedia, CM: CommandMedia](
-    media_cls: type[IM], command_media: list[CM]
+async def prepare_media[IM: InputMedia, CM: MessageMedia](
+    media_cls: type[IM], message_media: list[CM]
 ) -> list[IM]:
     return [
         media_cls(str(SERVICE_URL / unquote(url[1:])))  # type: ignore [call-arg]
-        for file in sorted(command_media, key=lambda media: media.position)
+        for file in sorted(message_media, key=lambda media: media.position)
         if (url := file.url or file.from_url)
     ]
 
 
 async def build_keyboard(
-    command: Command,
+    message_keyboard: MessageKeyboard,
 ) -> ReplyKeyboardMarkup | InlineKeyboardMarkup | None:
-    if not command.keyboard:
-        return None
-
-    keyboard: list[list[CommandKeyboardButton]] = []
+    keyboard: list[list[MessageKeyboardButton]] = []
 
     for button in sorted(
-        command.keyboard.buttons, key=lambda btn: (btn.row, btn.position)
+        message_keyboard.buttons, key=lambda btn: (btn.row, btn.position)
     ):
         while len(keyboard) <= button.row:
             keyboard.append([])
 
         keyboard[button.row].append(button)
 
-    if command.keyboard.type == CommandKeyboardType.DEFAULT:
+    if message_keyboard.type == MessageKeyboardType.DEFAULT:
         return ReplyKeyboardMarkup(
             [[button.text for button in row] for row in keyboard],
             resize_keyboard=True,

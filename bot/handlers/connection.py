@@ -7,9 +7,9 @@ from ..storage import EventStorage
 from ..variables import Variables
 from .api_request import APIRequestHandler
 from .base import BaseHandler
-from .command import CommandHandler
 from .condition import ConditionHandler
 from .database_operation import DatabaseOperationHandler
+from .message import MessageHandler
 from .trigger import TriggerHandler
 
 from collections.abc import Awaitable, Callable
@@ -32,8 +32,8 @@ class ConnectionHandler(BaseHandler[Connection]):
             ConnectionTargetObjectType.TRIGGER: (
                 lambda id: self.bot.service_api.get_trigger(id)
             ),
-            ConnectionTargetObjectType.COMMAND: (
-                lambda id: self.bot.service_api.get_command(id)
+            ConnectionTargetObjectType.MESSAGE: (
+                lambda id: self.bot.service_api.get_message(id)
             ),
             ConnectionTargetObjectType.CONDITION: (
                 lambda id: self.bot.service_api.get_condition(id)
@@ -47,7 +47,7 @@ class ConnectionHandler(BaseHandler[Connection]):
         }
         self.handlers: dict[ConnectionTargetObjectType, BaseHandler[Any]] = {
             ConnectionTargetObjectType.TRIGGER: TriggerHandler(self.bot),
-            ConnectionTargetObjectType.COMMAND: CommandHandler(self.bot),
+            ConnectionTargetObjectType.MESSAGE: MessageHandler(self.bot),
             ConnectionTargetObjectType.CONDITION: ConditionHandler(self.bot),
             ConnectionTargetObjectType.API_REQUEST: APIRequestHandler(self.bot),
             ConnectionTargetObjectType.DATABASE_OPERATION: DatabaseOperationHandler(

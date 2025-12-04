@@ -1,7 +1,7 @@
 from telegram import CallbackQuery, Chat, Message, Update, User
 from telegram.ext import ContextTypes
 
-from service.models import CommandKeyboardButton, Connection, Trigger
+from service.models import Connection, MessageKeyboardButton, Trigger
 
 from ..storage import EventStorage
 from ..utils import replace_text_variables
@@ -153,18 +153,18 @@ class UpdateHandler:
     async def _get_command_keyboard_button_connections(
         self, update: Update, event_storage: EventStorage, variables: Variables
     ) -> list[Connection] | None:
-        message: Message | None = update.effective_message
+        event_message: Message | None = update.effective_message
         callback_query: CallbackQuery | None = update.callback_query
 
-        buttons: list[CommandKeyboardButton] = []
+        buttons: list[MessageKeyboardButton] = []
 
         if callback_query and callback_query.data and callback_query.data.isdigit():
-            buttons = await self.bot.service_api.get_commands_keyboard_buttons(
+            buttons = await self.bot.service_api.get_messages_keyboard_buttons(
                 id=int(callback_query.data)
             )
-        elif message and message.text:
-            buttons = await self.bot.service_api.get_commands_keyboard_buttons(
-                text=message.text
+        elif event_message and event_message.text:
+            buttons = await self.bot.service_api.get_messages_keyboard_buttons(
+                text=event_message.text
             )
         else:
             return None

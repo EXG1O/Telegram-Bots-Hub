@@ -9,7 +9,8 @@ from telegram import (
 from telegram._utils.types import ReplyMarkup
 from telegram.constants import MediaGroupLimit
 
-from service.models import Command, Connection
+from service.models import Connection
+from service.models import Message as SMessage
 
 from ...storage import EventStorage
 from ...utils import process_html_text, replace_text_variables
@@ -23,7 +24,7 @@ from typing import Any, cast
 import asyncio
 
 
-class CommandHandler(BaseHandler[Command]):
+class MessageHandler(BaseHandler[SMessage]):
     async def _send_media_group(
         self,
         chat_id: int,
@@ -101,7 +102,7 @@ class CommandHandler(BaseHandler[Command]):
     async def handle(
         self,
         update: Update,
-        command: Command,
+        message: SMessage,
         event_storage: EventStorage,
         variables: Variables,
     ) -> list[Connection] | None:
@@ -111,7 +112,7 @@ class CommandHandler(BaseHandler[Command]):
         if not event_storage.chat or not chat or not user:
             return None
 
-        if not command.settings.send_as_new_message:
+        if not message.settings.send_as_new_message:
             last_bot_message_ids: list[int] | None = await event_storage.chat.pop(
                 'last_bot_message_ids'
             )
@@ -119,19 +120,23 @@ class CommandHandler(BaseHandler[Command]):
             if last_bot_message_ids:
                 await self.bot.telegram.delete_messages(chat.id, last_bot_message_ids)
 
-        message: Message | None = update.effective_message
-        message_id: int | None = message.message_id if message else None
+        event_message: Message | None = update.effective_message
+        event_message_id: int | None = (
+            event_message.message_id if event_message else None
+        )
         photos, documents, message_text, keyboard = await asyncio.gather(
-            prepare_media(InputMediaPhoto, command.images),
-            prepare_media(InputMediaDocument, command.documents),
-            replace_text_variables(process_html_text(command.message.text), variables),
-            build_keyboard(command),
+            prepare_media(InputMediaPhoto, message.images),
+            prepare_media(InputMediaDocument, message.documents),
+            replace_text_variables(process_html_text(message.text), variables),
+            build_keyboard(message.keyboard)
+            if message.keyboard
+            else asyncio.sleep(0, result=None),
         )
 
         last_bot_messages: list[Message] = await self._send_media_group(
             chat_id=chat.id,
-            reply_to_message_id=message_id
-            if command.settings.reply_to_user_message
+            reply_to_message_id=event_message_id
+            if message.settings.reply_to_user_message
             else None,
             media=Media(photo=photos, document=documents, video=[], audio=[]),
             message_text=message_text,
@@ -142,7 +147,11 @@ class CommandHandler(BaseHandler[Command]):
             [last_bot_message.id for last_bot_message in last_bot_messages],
         )
 
-        if message_id and not user.is_bot and command.settings.delete_user_message:
-            await self.bot.telegram.delete_message(chat.id, message_id)
+        if (
+            event_message_id
+            and not user.is_bot
+            and message.settings.delete_user_message
+        ):
+            await self.bot.telegram.delete_message(chat.id, event_message_id)
 
-        return command.source_connections
+        return message.source_connections
