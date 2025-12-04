@@ -9,22 +9,22 @@ from core.settings import SERVICE_TOKEN, SERVICE_UNIX_SOCK, SERVICE_URL
 from .enums import (
     APIRequestMethod,
     BackgroundTaskInterval,
-    CommandKeyboardType,
     ConditionPartNextPartOperator,
     ConditionPartOperator,
     ConditionPartType,
     ConnectionSourceObjectType,
     ConnectionTargetObjectType,
+    MessageKeyboardType,
 )
 from .models import (
     APIRequest,
     BackgroundTask,
     Bot,
-    Command,
-    CommandKeyboardButton,
     Condition,
     DatabaseOperation,
     DatabaseRecord,
+    Message,
+    MessageKeyboardButton,
     Trigger,
     User,
     Variable,
@@ -45,7 +45,7 @@ config = Config(
             ConnectionSourceObjectType,
             ConnectionTargetObjectType,
             APIRequestMethod,
-            CommandKeyboardType,
+            MessageKeyboardType,
             ConditionPartType,
             ConditionPartOperator,
             ConditionPartNextPartOperator,
@@ -128,9 +128,9 @@ class API:
         async with self.session.get(self.root_url / f'triggers/{id}/') as response:
             return from_dict(Trigger, await response.json(), config)
 
-    async def get_commands_keyboard_buttons(
+    async def get_messages_keyboard_buttons(
         self, id: int | None = None, text: str | None = None
-    ) -> list[CommandKeyboardButton]:
+    ) -> list[MessageKeyboardButton]:
         params: dict[str, str] = {}
 
         if id is not None:
@@ -139,20 +139,20 @@ class API:
             params['text'] = text
 
         async with self.session.get(
-            self.root_url / 'commands-keyboard-buttons/', params=params
+            self.root_url / 'messages-keyboard-buttons/', params=params
         ) as response:
             return [
-                from_dict(CommandKeyboardButton, data, config)
+                from_dict(MessageKeyboardButton, data, config)
                 for data in await response.json()
             ]
 
-    async def get_commands(self) -> list[Command]:
-        async with self.session.get(self.root_url / 'commands/') as response:
-            return [from_dict(Command, data, config) for data in await response.json()]
+    async def get_messages(self) -> list[Message]:
+        async with self.session.get(self.root_url / 'messages/') as response:
+            return [from_dict(Message, data, config) for data in await response.json()]
 
-    async def get_command(self, id: int) -> Command:
-        async with self.session.get(self.root_url / f'commands/{id}/') as response:
-            return from_dict(Command, await response.json(), config)
+    async def get_message(self, id: int) -> Message:
+        async with self.session.get(self.root_url / f'messages/{id}/') as response:
+            return from_dict(Message, await response.json(), config)
 
     async def get_conditions(self) -> list[Condition]:
         async with self.session.get(self.root_url / 'conditions/') as response:
