@@ -85,7 +85,7 @@ class MessageKeyboard:
 @dataclass(frozen=True)
 class Message:
     id: int
-    text: str
+    text: str | None
     settings: MessageSettings
     images: list[MessageImage]
     documents: list[MessageDocument]
