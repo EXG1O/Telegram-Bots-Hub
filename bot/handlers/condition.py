@@ -4,7 +4,7 @@ from service.enums import ConditionPartNextPartOperator, ConditionPartOperator
 from service.models import Condition, Connection
 
 from ..storage import EventStorage
-from ..utils import replace_text_variables
+from ..utils.variables import replace_text_variables
 from ..variables import Variables
 from .base import BaseHandler
 

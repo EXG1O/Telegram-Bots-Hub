@@ -1,25 +1,20 @@
-from telegram import BotCommand, Update
+from telegram import BotCommand, Update, User
 from telegram.constants import ParseMode, UpdateType
-from telegram.ext import (
-    ApplicationBuilder,
-    CallbackQueryHandler,
-    Defaults,
-    MessageHandler,
-    filters,
-)
+from telegram.ext import ApplicationBuilder, Defaults
 
 from core.settings import SELF_URL, TELEGRAM_TOKEN
 from core.storage import bots
 from service import API
 from service.models import Trigger
 
-from .handlers.update import UpdateHandler
+from .handler import Handler
 from .request import ResilientHTTPXRequest
 from .storage import Storage
 from .tasks import TaskManager
-from .utils import is_valid_user
+from .utils.validation import is_valid_user
 
 from typing import Final
+import asyncio
 import re
 import string
 
@@ -40,11 +35,13 @@ class Bot:
         self.service_id = service_id
         self.service_api = API(service_id)
         self.storage = Storage(bot_id=int(token.split(':')[0]))
-        self.update_handler = UpdateHandler(self)
+        self.handler = Handler(self)
         self.task_manager = TaskManager(self)
 
     async def feed_webhook_update(self, update: Update) -> None:
-        if not await is_valid_user(self, update.effective_user):
+        user: User | None = update.effective_user
+
+        if not user or not await is_valid_user(self, user):
             return
 
         await self.app.update_queue.put(update)
@@ -69,15 +66,15 @@ class Bot:
         )
 
     async def start(self) -> None:
-        await self.set_menu_commands()
+        self.app.add_handler(self.handler)
 
-        self.app.add_handler(MessageHandler(filters.TEXT, self.update_handler.handle))
-        self.app.add_handler(CallbackQueryHandler(self.update_handler.handle))
-
-        await self.telegram.set_webhook(
-            f'{SELF_URL}/bots/{self.service_id}/webhook/',
-            allowed_updates=[UpdateType.MESSAGE, UpdateType.CALLBACK_QUERY],
-            secret_token=TELEGRAM_TOKEN,
+        await asyncio.gather(
+            self.set_menu_commands(),
+            self.telegram.set_webhook(
+                f'{SELF_URL}/bots/{self.service_id}/webhook/',
+                allowed_updates=[UpdateType.MESSAGE, UpdateType.CALLBACK_QUERY],
+                secret_token=TELEGRAM_TOKEN,
+            ),
         )
 
         await self.app.initialize()

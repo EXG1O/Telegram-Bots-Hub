@@ -2,7 +2,7 @@ from telegram import Message, User
 
 from service.models import DatabaseRecord, Variable
 
-from .utils import process_html_text
+from .utils.html import process_html_text
 
 from typing import TYPE_CHECKING, Any, Self
 

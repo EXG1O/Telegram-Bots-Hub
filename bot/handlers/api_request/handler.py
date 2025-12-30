@@ -11,7 +11,7 @@ from aiohttp import (
 from service.models import APIRequest, Connection
 
 from ...storage import EventStorage
-from ...utils import replace_data_variables
+from ...utils.variables import replace_data_variables
 from ...variables import Variables
 from ..base import BaseHandler
 from .resolver import SafeResolver
