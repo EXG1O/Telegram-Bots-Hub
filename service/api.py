@@ -23,6 +23,7 @@ from .models import (
     Condition,
     DatabaseOperation,
     DatabaseRecord,
+    Invoice,
     Message,
     MessageKeyboardButton,
     Trigger,
@@ -197,6 +198,14 @@ class API:
             self.root_url / f'database-operations/{id}/'
         ) as response:
             return from_dict(DatabaseOperation, await response.json(), config)
+
+    async def get_invoices(self) -> list[Invoice]:
+        async with self.session.get(self.root_url / 'invoices/') as response:
+            return [from_dict(Invoice, data, config) for data in await response.json()]
+
+    async def get_invoice(self, id: int) -> Invoice:
+        async with self.session.get(self.root_url / f'invoices/{id}/') as response:
+            return from_dict(Invoice, await response.json(), config)
 
     async def get_variables(self, name: str | None = None) -> list[Variable]:
         params: dict[str, str] = {}

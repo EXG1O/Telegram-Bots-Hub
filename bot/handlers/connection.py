@@ -9,6 +9,7 @@ from .api_request import APIRequestHandler
 from .base import BaseHandler
 from .condition import ConditionHandler
 from .database_operation import DatabaseOperationHandler
+from .invoice import InvoiceHandler
 from .message import MessageHandler
 from .trigger import TriggerHandler
 
@@ -44,6 +45,9 @@ class ConnectionHandler(BaseHandler[Connection]):
             ConnectionTargetObjectType.DATABASE_OPERATION: (
                 lambda id: self.bot.service_api.get_database_operation(id)
             ),
+            ConnectionTargetObjectType.INVOICE: (
+                lambda id: self.bot.service_api.get_invoice(id)
+            ),
         }
         self.handlers: dict[ConnectionTargetObjectType, BaseHandler[Any]] = {
             ConnectionTargetObjectType.TRIGGER: TriggerHandler(self.bot),
@@ -53,6 +57,7 @@ class ConnectionHandler(BaseHandler[Connection]):
             ConnectionTargetObjectType.DATABASE_OPERATION: DatabaseOperationHandler(
                 self.bot
             ),
+            ConnectionTargetObjectType.INVOICE: InvoiceHandler(self.bot),
         }
 
     async def handle(

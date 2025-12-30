@@ -72,7 +72,11 @@ class Bot:
             self.set_menu_commands(),
             self.telegram.set_webhook(
                 f'{SELF_URL}/bots/{self.service_id}/webhook/',
-                allowed_updates=[UpdateType.MESSAGE, UpdateType.CALLBACK_QUERY],
+                allowed_updates=[
+                    UpdateType.MESSAGE,
+                    UpdateType.CALLBACK_QUERY,
+                    UpdateType.PRE_CHECKOUT_QUERY,
+                ],
                 secret_token=TELEGRAM_TOKEN,
             ),
         )
