@@ -10,7 +10,7 @@ from service.models import (
 from service.schemas import CreateDatabaseRecord, UpdateDatabaseRecords
 
 from ..storage import EventStorage
-from ..utils import replace_data_variables, replace_text_variables
+from ..utils.variables import replace_data_variables, replace_text_variables
 from ..variables import Variables
 from .base import BaseHandler
 

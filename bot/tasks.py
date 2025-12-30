@@ -4,7 +4,7 @@ from telegram.error import InvalidToken
 import service.models
 
 from .storage import EventStorage
-from .utils import is_valid_user
+from .utils.validation import is_valid_user
 from .variables import Variables
 
 from datetime import UTC, datetime, timedelta
@@ -56,7 +56,7 @@ class TaskManager:
             last_name=user_last_name,
         )
 
-        await self.bot.update_handler.connection_handler.handle_many(
+        await self.bot.handler.connection_handler.handle_many(
             update,
             task.source_connections,
             EventStorage(

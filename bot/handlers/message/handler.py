@@ -13,7 +13,8 @@ from service.models import Connection
 from service.models import Message as ServiceMessage
 
 from ...storage import EventStorage, Storage
-from ...utils import process_html_text, replace_text_variables
+from ...utils.html import process_html_text
+from ...utils.variables import replace_text_variables
 from ...variables import Variables
 from ..base import BaseHandler
 from .data import Media, MediaType, MediaValue

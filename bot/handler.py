@@ -1,12 +1,13 @@
 from telegram import CallbackQuery, Chat, Message, Update, User
-from telegram.ext import ContextTypes
+from telegram.ext import Application, BaseHandler, ContextTypes, filters
+from telegram.ext._utils.types import FilterDataDict
 
 from service.models import Connection, MessageKeyboardButton, Trigger
 
-from ..storage import EventStorage
-from ..utils import replace_text_variables
-from ..variables import Variables
-from .connection import ConnectionHandler
+from .handlers.connection import ConnectionHandler
+from .storage import EventStorage
+from .utils.variables import replace_text_variables
+from .variables import Variables
 
 from collections.abc import Awaitable, Callable, Sequence
 from itertools import chain
@@ -14,14 +15,15 @@ from typing import TYPE_CHECKING, Any
 import asyncio
 
 if TYPE_CHECKING:
-    from ..bot import Bot
+    from .bot import Bot
 else:
     Bot = Any
 
 
-class UpdateHandler:
+class Handler(BaseHandler[Update, ContextTypes.DEFAULT_TYPE, None]):
     def __init__(self, bot: Bot) -> None:
         self.bot = bot
+        self.block: bool = True
         self.connection_handler = ConnectionHandler(self.bot)
         self.connection_fetchers: Sequence[
             Callable[
@@ -173,7 +175,26 @@ class UpdateHandler:
             chain.from_iterable(button.source_connections for button in buttons)
         )
 
-    async def handle(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    def check_update(self, update: object) -> bool | None:
+        if not isinstance(update, Update):
+            return None
+
+        result: FilterDataDict | bool | None = filters.TEXT.check_update(update)
+
+        if result:
+            return bool(result)
+        elif update.callback_query:
+            return True
+
+        return False
+
+    async def handle_update(
+        self,
+        update: Update,
+        application: Application[Any, ContextTypes.DEFAULT_TYPE, Any, Any, Any, Any],
+        check_result: object,
+        context: ContextTypes.DEFAULT_TYPE,
+    ) -> None:
         chat: Chat | None = update.effective_chat
         user: User | None = update.effective_user
 

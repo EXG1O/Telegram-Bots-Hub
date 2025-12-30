@@ -1,5 +1,5 @@
 from ..variables import Variables
-from . import deserialize_text
+from .deserializers import deserialize_text
 
 from typing import Any, Final, Literal, overload
 import asyncio
