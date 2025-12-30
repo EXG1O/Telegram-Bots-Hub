@@ -1,4 +1,4 @@
-from .base_models import MessageMedia
+from .base_models import Media, MessageMedia
 from .enums import (
     APIRequestMethod,
     BackgroundTaskInterval,
@@ -146,6 +146,28 @@ class DatabaseOperation:
     id: int
     create_operation: DatabaseCreateOperation | None
     update_operation: DatabaseUpdateOperation | None
+    source_connections: list[Connection]
+
+
+@dataclass(frozen=True)
+class InvoiceImage(Media):
+    pass
+
+
+@dataclass(frozen=True)
+class InvoicePrice:
+    id: int
+    label: str
+    amount: int
+
+
+@dataclass(frozen=True)
+class Invoice:
+    id: int
+    title: str
+    image: InvoiceImage | None
+    description: str
+    prices: list[InvoicePrice]
     source_connections: list[Connection]
 
 

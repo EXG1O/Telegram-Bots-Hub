@@ -183,7 +183,7 @@ class Handler(BaseHandler[Update, ContextTypes.DEFAULT_TYPE, None]):
 
         if result:
             return bool(result)
-        elif update.callback_query:
+        elif update.callback_query or update.pre_checkout_query:
             return True
 
         return False
@@ -195,6 +195,10 @@ class Handler(BaseHandler[Update, ContextTypes.DEFAULT_TYPE, None]):
         check_result: object,
         context: ContextTypes.DEFAULT_TYPE,
     ) -> None:
+        if update.pre_checkout_query:
+            await update.pre_checkout_query.answer(ok=True)
+            return
+
         chat: Chat | None = update.effective_chat
         user: User | None = update.effective_user
 

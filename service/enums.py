@@ -9,6 +9,7 @@ class ConnectionSourceObjectType(Enum):
     BACKGROUND_TASK = 'background_task'
     API_REQUEST = 'api_request'
     DATABASE_OPERATION = 'database_operation'
+    INVOICE = 'invoice'
 
 
 class ConnectionTargetObjectType(Enum):
@@ -17,6 +18,7 @@ class ConnectionTargetObjectType(Enum):
     CONDITION = 'condition'
     API_REQUEST = 'api_request'
     DATABASE_OPERATION = 'database_operation'
+    INVOICE = 'invoice'
 
 
 class APIRequestMethod(Enum):
