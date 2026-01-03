@@ -41,7 +41,7 @@ class Bot:
     async def feed_webhook_update(self, update: Update) -> None:
         user: User | None = update.effective_user
 
-        if not user or not await is_valid_user(self, user):
+        if not (user and (user.is_bot or await is_valid_user(self, user))):
             return
 
         await self.app.update_queue.put(update)
