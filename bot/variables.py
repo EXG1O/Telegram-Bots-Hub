@@ -1,4 +1,4 @@
-from telegram import Message, User
+from telegram import Chat, Message, User
 
 from service.models import DatabaseRecord, Variable
 
@@ -14,27 +14,50 @@ else:
 
 class Variables:
     def __init__(
-        self, bot: Bot, user: User | None = None, message: Message | None = None
+        self,
+        bot: Bot,
+        chat: Chat | None = None,
+        user: User | None = None,
+        message: Message | None = None,
     ):
         self.bot = bot
+        self.chat = chat
         self.user = user
         self.message = message
 
         self.store: dict[str, Any] = {}
         self.system_store: dict[str, Any] = {
-            'BOT_NAME': bot.telegram.bot.full_name,
+            'BOT_ID': bot.telegram.bot.id,
+            'BOT_NAME': bot.telegram.bot.name,
             'BOT_USERNAME': bot.telegram.bot.username,
+            'BOT_FULL_NAME': bot.telegram.bot.full_name,
+            'BOT_LINK': bot.telegram.bot.link,
         }
 
+        if chat:
+            self.system_store.update(
+                {
+                    'CHAT_ID': chat.id,
+                    'CHAT_TYPE': chat.type,
+                    'CHAT_NAME': chat.effective_name,
+                    'CHAT_USERNAME': chat.username,
+                    'CHAT_FULL_NAME': chat.full_name,
+                    'CHAT_LINK': chat.link,
+                }
+            )
         if user:
             self.system_store.update(
                 {
                     'USER_ID': user.id,
+                    'USER_IS_BOT': user.is_bot,
+                    'USER_IS_PREMIUM': user.is_premium,
+                    'USER_NAME': user.name,
                     'USER_USERNAME': user.username,
                     'USER_FIRST_NAME': user.first_name,
                     'USER_LAST_NAME': user.last_name,
                     'USER_FULL_NAME': user.full_name,
                     'USER_LANGUAGE_CODE': user.language_code,
+                    'USER_LINK': user.link,
                 }
             )
         if message:
@@ -43,11 +66,12 @@ class Variables:
                     'USER_MESSAGE_ID': message.message_id,
                     'USER_MESSAGE_TEXT': message.text,
                     'USER_MESSAGE_DATE': message.date,
+                    'USER_MESSAGE_LINK': message.link,
                 }
             )
 
     def __copy__(self) -> Self:
-        obj = self.__class__(self.bot, self.user, self.message)
+        obj = self.__class__(self.bot, self.chat, self.user, self.message)
         obj.store = self.store.copy()
         return obj
 

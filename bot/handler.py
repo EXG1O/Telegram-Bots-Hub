@@ -207,7 +207,12 @@ class Handler(BaseHandler[Update, ContextTypes.DEFAULT_TYPE, None]):
             chat_id=user.id if user else None,
             user_id=chat.id if chat else None,
         )
-        variables = Variables(self.bot, update.effective_user, update.effective_message)
+        variables = Variables(
+            bot=self.bot,
+            chat=update.effective_chat,
+            user=update.effective_user,
+            message=update.effective_message,
+        )
 
         await self.connection_handler.handle_many(
             update,

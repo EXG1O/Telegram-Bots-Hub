@@ -64,7 +64,9 @@ class TaskManager:
                 chat_id=user.telegram_id,
                 user_id=user.telegram_id,
             ),
-            Variables(self.bot, update.effective_user),
+            Variables(
+                bot=self.bot, chat=update.effective_chat, user=update.effective_user
+            ),
         )
 
     async def _process_background_tasks(self) -> None:
