@@ -75,17 +75,7 @@ class Variables:
         obj.store = self.store.copy()
         return obj
 
-    async def _get_user_variable(self, name: str) -> str | None:
-        variables: list[Variable] = await self.bot.service_api.get_variables(name=name)
-        return process_html_text(variables[0].value) if variables else None
-
-    async def _get_database_record(self, path: str) -> Any | None:
-        records: list[DatabaseRecord] = await self.bot.service_api.get_database_records(
-            has_data_path=path
-        )
-        return self._resolve_data_path(records[0].data, path) if records else None
-
-    def _resolve_data_path(self, data: Any, path: str) -> Any | None:
+    def _resolve_value(self, data: Any, path: str) -> Any | None:
         try:
             for part in path.split('.'):
                 data = data[int(part) if part.isdigit() else part]
@@ -93,21 +83,43 @@ class Variables:
         except (TypeError, KeyError, IndexError):
             return None
 
+    async def _resolve_user_value(
+        self, name: str, path: str | None = None
+    ) -> Any | None:
+        variables: list[Variable] = await self.bot.service_api.get_variables(name=name)
+
+        if not variables:
+            return None
+
+        if len(variables) > 1:
+            result: list[str] = [
+                process_html_text(variable.value) for variable in variables
+            ]
+            return self._resolve_value(result, path) if path else result
+
+        return process_html_text(variables[0].value)
+
+    async def _resolve_database_value(self, path: str) -> Any | None:
+        records: list[DatabaseRecord] = await self.bot.service_api.get_database_records(
+            has_data_path=path
+        )
+        return self._resolve_value(records[0].data, path) if records else None
+
     async def get(self, key: str) -> Any | None:
         prefix, _, nested_key = key.partition('.')
 
         if prefix == 'SYSTEM':
             return self.system_store.get(nested_key)
         elif prefix == 'USER':
-            return await self._get_user_variable(nested_key)
+            return await self._resolve_user_value(nested_key)
         elif prefix == 'DATABASE':
-            return await self._get_database_record(nested_key)
+            return await self._resolve_database_value(nested_key)
         elif (
             nested_key
             and (value := self.store.get(prefix))
             and isinstance(value, dict | list | tuple | set)
         ):
-            return self._resolve_data_path(value, nested_key)
+            return self._resolve_value(value, nested_key)
 
         return self.store.get(key)
 
