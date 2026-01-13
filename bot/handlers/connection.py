@@ -68,12 +68,12 @@ class ConnectionHandler(BaseHandler[Connection]):
         variables: Variables,
     ) -> None:
         variables = copy(variables)
-        object: Any = await self.fetchers[connection.target_object_type](
+        obj: Any = await self.fetchers[connection.target_object_type](
             connection.target_object_id
         )
         connections: list[Connection] | None = await self.handlers[
             connection.target_object_type
-        ].handle(update, object, event_storage, variables)
+        ].handle(update, obj, event_storage, variables)
 
         if not connections:
             return
