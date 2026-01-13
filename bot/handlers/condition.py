@@ -56,4 +56,4 @@ class ConditionHandler(BaseHandler[Condition]):
             elif part.next_part_operator == ConditionPartNextPartOperator.OR:
                 result = result or current_result
 
-        return condition.source_connections if bool(result) else None
+        return condition.source_connections if result else None
