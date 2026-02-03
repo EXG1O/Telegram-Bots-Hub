@@ -1,8 +1,10 @@
 from telegram import (
     Chat,
+    InlineKeyboardMarkup,
     InputMediaDocument,
     InputMediaPhoto,
     Message,
+    ReplyKeyboardMarkup,
     Update,
     User,
 )
@@ -23,6 +25,7 @@ from .utils import build_keyboard, prepare_media
 from collections.abc import Awaitable, Callable
 from typing import Any, cast
 import asyncio
+import html
 
 
 class MessageHandler(BaseHandler[ServiceMessage]):
@@ -115,15 +118,24 @@ class MessageHandler(BaseHandler[ServiceMessage]):
         reply_to_message_id: int | None = (
             event_message_id if message.settings.reply_to_user_message else None
         )
-        photos, documents, text, keyboard = await asyncio.gather(
-            prepare_media(InputMediaPhoto, message.images),
-            prepare_media(InputMediaDocument, message.documents),
-            replace_text_variables(process_html_text(message.text), variables)
-            if message.text
-            else asyncio.sleep(0),
-            build_keyboard(message.keyboard) if message.keyboard else asyncio.sleep(0),
+        media = Media(
+            photo=prepare_media(InputMediaPhoto, message.images),
+            document=prepare_media(InputMediaDocument, message.documents),
+            video=[],
+            audio=[],
         )
-        media = Media(photo=photos, document=documents, video=[], audio=[])
+        text: str | None = (
+            process_html_text(
+                await replace_text_variables(
+                    html.unescape(message.text).replace('\u00a0', ' '), variables
+                )
+            )
+            if message.text
+            else None
+        )
+        keyboard: ReplyKeyboardMarkup | InlineKeyboardMarkup | None = (
+            build_keyboard(message.keyboard) if message.keyboard else None
+        )
 
         last_bot_messages: list[Message] = []
 

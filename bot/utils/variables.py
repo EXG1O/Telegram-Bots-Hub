@@ -1,13 +1,44 @@
-from ..variables import Variables
 from .deserializers import deserialize_text
 
-from typing import Any, Final, Literal, overload
+from typing import TYPE_CHECKING, Any, Final, Literal, overload
 import asyncio
 import re
 
-VARIABLE_PATTERN: Final[re.Pattern[str]] = re.compile(
-    r'\{\{\s*(\w+(?:(?:\.|\s+)\w+)*)\s*\}\}', re.IGNORECASE
-)
+if TYPE_CHECKING:
+    from ..variables import Variables
+else:
+    Variables = Any
+
+
+VARIABLE_PATTERN: Final[re.Pattern[str]] = re.compile(r'\{\{([^{}]+)\}\}')
+
+
+async def _replace_text_variables(text: str, variables: Variables) -> str:
+    matches: list[re.Match[str]] = list(VARIABLE_PATTERN.finditer(text))
+
+    if not matches:
+        return text
+
+    keys: list[str] = [match.group(1).strip() for match in matches]
+    values: list[Any | None] = await asyncio.gather(
+        *[variables.get(key) for key in keys]
+    )
+
+    result: list[str] = []
+    last_end_index: int = 0
+
+    for match, value in zip(matches, values, strict=False):
+        start_index, end_index = match.span()
+        result.extend(
+            [
+                text[last_end_index:start_index],
+                str(value) if value is not None else match.group(0),
+            ]
+        )
+        last_end_index = end_index
+    result.append(text[last_end_index:])
+
+    return ''.join(result)
 
 
 @overload
@@ -27,36 +58,20 @@ async def replace_text_variables(
 async def replace_text_variables(
     text: str, variables: Variables, deserialize: bool = False
 ) -> str | int | float | bool:
-    matches: list[re.Match[str]] = list(VARIABLE_PATTERN.finditer(text))
+    final_text: str = text
 
-    if not matches:
-        return text
+    for _ in range(3):
+        next_text: str = await _replace_text_variables(final_text, variables)
 
-    keys: list[str] = [match.group(1) for match in matches]
-    values: list[Any | None] = await asyncio.gather(
-        *[variables.get(key) for key in keys]
-    )
+        if next_text == final_text:
+            break
 
-    result: list[str] = []
-    last_end_index: int = 0
-
-    for match, value in zip(matches, values, strict=False):
-        start_index, end_index = match.span()
-        result.extend(
-            [
-                text[last_end_index:start_index],
-                str(value) if value is not None else match.group(0),
-            ]
-        )
-        last_end_index = end_index
-    result.append(text[last_end_index:])
-
-    result_text: str = ''.join(result)
+        final_text = next_text
 
     if deserialize:
-        return deserialize_text(result_text)
+        return deserialize_text(final_text)
 
-    return result_text
+    return final_text
 
 
 async def replace_data_variables(

@@ -27,9 +27,9 @@ class HTMLTextFormatter(HTMLParser):
         stack: list[tuple[str, int, int]]
 
     def __call__(self, data: str) -> str:
-        self.feed(data.replace('&nbsp;', ' '))
+        self.feed(data)
         self.close()
-        result: str = self.result
+        result: str = self.result.replace('\u00a0', ' ')
         self.reset()
         return result
 
