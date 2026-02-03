@@ -13,7 +13,7 @@ from service.models import MessageKeyboard, MessageKeyboardButton
 from urllib.parse import unquote
 
 
-async def prepare_media[IM: InputMedia, CM: MessageMedia](
+def prepare_media[IM: InputMedia, CM: MessageMedia](
     media_cls: type[IM], message_media: list[CM]
 ) -> list[IM]:
     return [
@@ -23,7 +23,7 @@ async def prepare_media[IM: InputMedia, CM: MessageMedia](
     ]
 
 
-async def build_keyboard(
+def build_keyboard(
     message_keyboard: MessageKeyboard,
 ) -> ReplyKeyboardMarkup | InlineKeyboardMarkup | None:
     keyboard: list[list[MessageKeyboardButton]] = []

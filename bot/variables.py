@@ -5,11 +5,15 @@ from service.models import DatabaseRecord, Variable
 from .utils.html import process_html_text
 
 from typing import TYPE_CHECKING, Any, Self
+import re
 
 if TYPE_CHECKING:
     from ..bot import Bot
 else:
     Bot = Any
+
+
+VARIABLE_SEARCH_PATTERN: re.Pattern[str] = re.compile(r'\[search=([^\[\]]+)\]')
 
 
 class Variables:
@@ -83,9 +87,10 @@ class Variables:
         except (TypeError, KeyError, IndexError):
             return None
 
-    async def _resolve_user_value(
-        self, name: str, path: str | None = None
-    ) -> Any | None:
+    async def _resolve_user_value(self, path: str) -> Any | None:
+        name, _, new_path = path.partition('.')
+        final_path: str | None = new_path or None
+
         variables: list[Variable] = await self.bot.service_api.get_variables(name=name)
 
         if not variables:
@@ -95,31 +100,60 @@ class Variables:
             result: list[str] = [
                 process_html_text(variable.value) for variable in variables
             ]
-            return self._resolve_value(result, path) if path else result
+            return self._resolve_value(result, final_path) if final_path else result
 
         return process_html_text(variables[0].value)
 
     async def _resolve_database_value(self, path: str) -> Any | None:
+        match: re.Match[str] | None = VARIABLE_SEARCH_PATTERN.match(path)
+        search_value: str | None = None
+
+        if TYPE_CHECKING:
+            final_path: str | None
+
+        if match:
+            final_path = path[match.end() + 1 :] or None
+            raw_search_value: str = match.group(1)
+            search_value = (await self.get(raw_search_value)) or raw_search_value
+        else:
+            final_path = path
+
         records: list[DatabaseRecord] = await self.bot.service_api.get_database_records(
-            has_data_path=path
+            search=search_value, has_data_path=final_path
         )
-        return self._resolve_value(records[0].data, path) if records else None
+
+        if not records:
+            return None
+
+        if len(records) > 1:
+            records_data: list[dict[str, Any] | list[Any]] = [
+                record.data for record in records
+            ]
+            return (
+                self._resolve_value(records_data, final_path)
+                if final_path
+                else records_data
+            )
+
+        record_data: dict[str, Any] | list[Any] = records[0].data
+        return (
+            self._resolve_value(record_data, final_path) if final_path else record_data
+        )
 
     async def get(self, key: str) -> Any | None:
         prefix, _, nested_key = key.partition('.')
 
-        if prefix == 'SYSTEM':
-            return self.system_store.get(nested_key)
-        elif prefix == 'USER':
-            return await self._resolve_user_value(nested_key)
-        elif prefix == 'DATABASE':
-            return await self._resolve_database_value(nested_key)
-        elif (
-            nested_key
-            and (value := self.store.get(prefix))
-            and isinstance(value, dict | list | tuple | set)
-        ):
-            return self._resolve_value(value, nested_key)
+        if nested_key:
+            if prefix == 'SYSTEM':
+                return self.system_store.get(nested_key)
+            elif prefix == 'USER':
+                return await self._resolve_user_value(nested_key)
+            elif prefix == 'DATABASE':
+                return await self._resolve_database_value(nested_key)
+            elif (value := self.store.get(prefix)) and isinstance(
+                value, dict | list | tuple | set
+            ):
+                return self._resolve_value(value, nested_key)
 
         return self.store.get(key)
 
