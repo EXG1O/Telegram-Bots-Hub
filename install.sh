@@ -1,8 +1,7 @@
 #!/bin/bash
 
-pip install -U pip
-pip install poetry
-poetry install
+uv sync --locked
+source .venv/bin/activate
 
 read -p "Enter microservice URL: " SELF_URL
 read -p "Enter microservice token: " SELF_TOKEN

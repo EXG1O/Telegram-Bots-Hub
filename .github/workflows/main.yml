@@ -14,22 +14,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Install poetry
-        run: pipx install poetry
+        uses: actions/checkout@v6
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: 3.12
-          cache: poetry
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
 
       - name: Install dependencies
-        run: poetry install --no-interaction
+        run: uv sync --locked
 
       - name: Run ruff
-        run: poetry run ruff check . && poetry run ruff format --check .
+        run: uv run ruff check && uv run ruff format --check
 
       - name: Run mypy
-        run: poetry run mypy .
+        run: uv run mypy .
