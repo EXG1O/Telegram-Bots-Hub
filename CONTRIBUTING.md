@@ -11,18 +11,18 @@ To maintain a consistent code style, we use **ruff** as code formatter and linte
 ### ruff
 To format your code, run the following command:
 ```bash
-ruff format .
+ruff format
 ```
 
 To check your code for linting issues, run the following command:
 ```bash
-ruff check .
+ruff check
 ```
 This will list any issues that need to be addressed.
 
 To auto-fix these issues, run the following command:
 ```bash
-ruff check --fix .
+ruff check --fix
 ```
 
 ### mypy

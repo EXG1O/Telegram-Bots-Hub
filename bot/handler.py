@@ -64,15 +64,17 @@ class Handler(BaseHandler[Update, ContextTypes.DEFAULT_TYPE, None]):
 
             connections = trigger.source_connections
         elif (
-            trigger.message
-            and trigger.message.text
-            and (
-                message.text
-                == (await replace_text_variables(trigger.message.text, variables))
+            (
+                trigger.message
+                and trigger.message.text
+                and (
+                    message.text
+                    == (await replace_text_variables(trigger.message.text, variables))
+                )
             )
+            or trigger.message
+            and not trigger.message.text
         ):
-            connections = trigger.source_connections
-        elif trigger.message and not trigger.message.text:
             connections = trigger.source_connections
         else:
             return None

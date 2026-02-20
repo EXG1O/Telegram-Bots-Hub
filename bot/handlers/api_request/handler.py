@@ -27,19 +27,20 @@ class APIRequestHandler(BaseHandler[APIRequest]):
         variables: Variables,
     ) -> list[Connection] | None:
         try:
-            async with ClientSession(
-                connector=TCPConnector(resolver=SafeResolver()),
-                headers={
-                    'User-Agent': (
-                        'ConstructorTelegramBots '
-                        f'(constructor.exg1o.org; bot_id={self.bot.telegram.id})'
-                    )
-                },
-                skip_auto_headers=['User-Agent'],
-                cookie_jar=DummyCookieJar(),
-                timeout=ClientTimeout(6),
-            ) as session:
-                async with session.request(
+            async with (
+                ClientSession(
+                    connector=TCPConnector(resolver=SafeResolver()),
+                    headers={
+                        'User-Agent': (
+                            'ConstructorTelegramBots '
+                            f'(constructor.exg1o.org; bot_id={self.bot.telegram.id})'
+                        )
+                    },
+                    skip_auto_headers=['User-Agent'],
+                    cookie_jar=DummyCookieJar(),
+                    timeout=ClientTimeout(6),
+                ) as session,
+                session.request(
                     api_request.method.value,
                     api_request.url,
                     headers=get_safe_headers(api_request.headers),
@@ -47,11 +48,12 @@ class APIRequestHandler(BaseHandler[APIRequest]):
                         api_request.body, variables, deserialize=True
                     ),
                     allow_redirects=False,
-                ) as response:
-                    variables.add(
-                        'API_RESPONSE',
-                        parse_response_body(await response.content.read(2048)),
-                    )
+                ) as response,
+            ):
+                variables.add(
+                    'API_RESPONSE',
+                    parse_response_body(await response.content.read(2048)),
+                )
         except ClientError:
             return None
 

@@ -87,9 +87,7 @@ async def replace_data_variables(
         )
     elif isinstance(data, dict):
         keys, values = await asyncio.gather(
-            asyncio.gather(
-                *[replace_data_variables(key, variables) for key in data.keys()]
-            ),
+            asyncio.gather(*[replace_data_variables(key, variables) for key in data]),
             asyncio.gather(
                 *[
                     replace_data_variables(value, variables, deserialize)
