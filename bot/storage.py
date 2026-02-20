@@ -22,7 +22,7 @@ class Storage:
         data: Any = json.loads(raw_data) if raw_data else {}
 
         if not isinstance(data, dict):
-            raise ValueError("The entry in 'redis' must be of type 'dict'.")
+            raise TypeError("The entry in 'redis' must be of type 'dict'.")
 
         return data
 
