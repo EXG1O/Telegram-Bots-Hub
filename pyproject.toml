@@ -1,23 +1,29 @@
-[tool.poetry]
-package-mode = false
+[project]
+name = "telegram-bots-hub"
+version = "2.4.0"
+requires-python = "==3.12"
+dependencies = [
+    "fastapi==0.111.0",
+    "dacite==1.8.1",
+    "aiohttp==3.12.15",
+    "uvicorn==0.30.1",
+    "pydantic==2.8.2",
+    "yarl==1.20.1",
+    "python-dotenv==1.0.1",
+    "python-telegram-bot==21.10",
+    "gunicorn==23.0.0",
+    "multidict==6.6.4",
+    "redis==7.1.0",
+]
 
-[tool.poetry.dependencies]
-python = "^3.12"
-fastapi = "^0.111.0"
-dacite = "^1.8.1"
-aiohttp = "^3.9.5"
-uvicorn = "^0.30.1"
-pydantic = "^2.8.2"
-yarl = "^1.9.4"
-python-dotenv = "^1.0.1"
-python-telegram-bot = "^21.10"
-gunicorn = "^23.0.0"
-multidict = "^6.6.4"
-redis = "^7.1.0"
+[dependency-groups]
+dev = [
+    "ruff==0.5.1",
+    "mypy==1.17.1",
+]
 
-[tool.poetry.group.dev.dependencies]
-ruff = "^0.5.1"
-mypy = "^1.10.1"
+[tool.uv]
+package = false
 
 [tool.mypy]
 strict = true
