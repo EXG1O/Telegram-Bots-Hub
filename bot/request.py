@@ -10,5 +10,5 @@ class ResilientHTTPXRequest(HTTPXRequest):
         try:
             return await super()._request_wrapper(*args, **kwargs)
         except RetryAfter as error:
-            await asyncio.sleep(error.retry_after)
+            await asyncio.sleep(error._retry_after.total_seconds())
             return await self._request_wrapper(*args, **kwargs)
