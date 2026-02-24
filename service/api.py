@@ -14,6 +14,7 @@ from .enums import (
     ConditionPartType,
     ConnectionSourceObjectType,
     ConnectionTargetObjectType,
+    MessageKeyboardButtonStyle,
     MessageKeyboardType,
 )
 from .models import (
@@ -47,6 +48,7 @@ config = Config(
             ConnectionTargetObjectType,
             APIRequestMethod,
             MessageKeyboardType,
+            MessageKeyboardButtonStyle,
             ConditionPartType,
             ConditionPartOperator,
             ConditionPartNextPartOperator,
