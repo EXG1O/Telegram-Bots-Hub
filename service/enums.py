@@ -35,6 +35,13 @@ class MessageKeyboardType(Enum):
     PAYMENT = 'payment'
 
 
+class MessageKeyboardButtonStyle(Enum):
+    DEFAULT = 'default'
+    PRIMARY = 'primary'
+    SUCCESS = 'success'
+    DANGER = 'danger'
+
+
 class ConditionPartType(Enum):
     POSITIVE = '+'
     NEGATIVE = '-'

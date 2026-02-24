@@ -7,6 +7,7 @@ from .enums import (
     ConditionPartType,
     ConnectionSourceObjectType,
     ConnectionTargetObjectType,
+    MessageKeyboardButtonStyle,
     MessageKeyboardType,
 )
 
@@ -73,6 +74,7 @@ class MessageKeyboardButton:
     position: int
     text: str
     url: str | None
+    style: MessageKeyboardButtonStyle
     source_connections: list[Connection]
 
 
