@@ -84,7 +84,7 @@ class Variables:
             for part in path.split('.'):
                 data = data[int(part) if part.isdigit() else part]
             return data
-        except (TypeError, KeyError, IndexError):
+        except TypeError, KeyError, IndexError:
             return None
 
     async def _resolve_user_value(self, path: str) -> Any | None:

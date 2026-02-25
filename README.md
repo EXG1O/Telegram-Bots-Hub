@@ -4,7 +4,7 @@
 ## Requirements
 - Linux
 - uv 0.10
-- Python 3.12
+- Python 3.14
 
 ## Installing
 To install, execute the following commands:

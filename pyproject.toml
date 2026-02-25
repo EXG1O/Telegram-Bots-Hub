@@ -1,7 +1,7 @@
 [project]
 name = "telegram-bots-hub"
 version = "2.4.0"
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.14,<3.15"
 dependencies = [
     "fastapi>=0.129,<0.130",
     "dacite>=1.9,<1.10",
@@ -34,7 +34,7 @@ warn_unreachable = true
 warn_no_return = true
 
 [tool.ruff]
-target-version = "py312"
+target-version = "py314"
 
 [tool.ruff.lint]
 select = [
