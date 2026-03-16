@@ -34,7 +34,7 @@ class DatabaseOperationHandler(BaseHandler[DatabaseOperation]):
         )
 
         if create_operation:
-            await self.bot.service_api.create_database_record(
+            await self.bot.service.create_database_record(
                 CreateDatabaseRecord(
                     data=await replace_data_variables(
                         create_operation.data, variables, deserialize=True
@@ -55,7 +55,7 @@ class DatabaseOperationHandler(BaseHandler[DatabaseOperation]):
 
             records: list[
                 DatabaseRecord
-            ] = await self.bot.service_api.update_database_records(
+            ] = await self.bot.service.update_database_records(
                 UpdateDatabaseRecords(data=data),
                 partial=not update_operation.overwrite,
                 search=(
@@ -65,7 +65,7 @@ class DatabaseOperationHandler(BaseHandler[DatabaseOperation]):
             )
 
             if not records and update_operation.create_if_not_found:
-                await self.bot.service_api.create_database_record(
+                await self.bot.service.create_database_record(
                     CreateDatabaseRecord(data=data)
                 )
         else:

@@ -91,7 +91,7 @@ class Variables:
         name, _, new_path = path.partition('.')
         final_path: str | None = new_path or None
 
-        variables: list[Variable] = await self.bot.service_api.get_variables(name=name)
+        variables: list[Variable] = await self.bot.service.get_variables(name=name)
 
         if not variables:
             return None
@@ -118,7 +118,7 @@ class Variables:
         else:
             final_path = path
 
-        records: list[DatabaseRecord] = await self.bot.service_api.get_database_records(
+        records: list[DatabaseRecord] = await self.bot.service.get_database_records(
             search=search_value, has_data_path=final_path
         )
 

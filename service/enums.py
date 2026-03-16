@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import IntEnum, StrEnum
 
 
-class ConnectionSourceObjectType(Enum):
+class ConnectionSourceObjectType(StrEnum):
     TRIGGER = 'trigger'
     MESSAGE = 'message'
     MESSAGE_KEYBOARD_BUTTON = 'message_keyboard_button'
@@ -12,7 +12,7 @@ class ConnectionSourceObjectType(Enum):
     INVOICE = 'invoice'
 
 
-class ConnectionTargetObjectType(Enum):
+class ConnectionTargetObjectType(StrEnum):
     TRIGGER = 'trigger'
     MESSAGE = 'message'
     CONDITION = 'condition'
@@ -21,7 +21,7 @@ class ConnectionTargetObjectType(Enum):
     INVOICE = 'invoice'
 
 
-class APIRequestMethod(Enum):
+class APIRequestMethod(StrEnum):
     GET = 'get'
     POST = 'post'
     PUT = 'put'
@@ -29,25 +29,25 @@ class APIRequestMethod(Enum):
     DELETE = 'delete'
 
 
-class MessageKeyboardType(Enum):
+class MessageKeyboardType(StrEnum):
     DEFAULT = 'default'
     INLINE = 'inline'
     PAYMENT = 'payment'
 
 
-class MessageKeyboardButtonStyle(Enum):
+class MessageKeyboardButtonStyle(StrEnum):
     DEFAULT = 'default'
     PRIMARY = 'primary'
     SUCCESS = 'success'
     DANGER = 'danger'
 
 
-class ConditionPartType(Enum):
+class ConditionPartType(StrEnum):
     POSITIVE = '+'
     NEGATIVE = '-'
 
 
-class ConditionPartOperator(Enum):
+class ConditionPartOperator(StrEnum):
     EQUAL = '=='
     NOT_EQUAL = '!='
     GREATER = '>'
@@ -56,12 +56,12 @@ class ConditionPartOperator(Enum):
     LESS_OR_EQUAL = '<='
 
 
-class ConditionPartNextPartOperator(Enum):
+class ConditionPartNextPartOperator(StrEnum):
     AND = '&&'
     OR = '||'
 
 
-class BackgroundTaskInterval(Enum):
+class BackgroundTaskInterval(IntEnum):
     DAY_1 = 1
     DAY_3 = 3
     DAY_7 = 7

@@ -29,15 +29,14 @@ async def is_valid_user(
                 "for 'service_user' is also None."
             )
 
-        create_service_user = bot.service_api.create_user(
+        create_service_user = bot.service.create_user(
             CreateUser(telegram_id=user.id, full_name=user.full_name)
         )
     else:
         create_service_user = asyncio.sleep(0, result=service_user)
 
     service_bot, service_user = await asyncio.gather(
-        bot.service_api.get_bot(),
-        create_service_user,
+        bot.service.get_bot(), create_service_user
     )
     assert service_bot
     assert service_user

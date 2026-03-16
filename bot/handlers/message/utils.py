@@ -9,9 +9,8 @@ from telegram.models import (
 from telegram.types import KeyboardMarkup
 
 from core.settings import SERVICE_URL
-from service.base_models import MessageMedia
 from service.enums import MessageKeyboardButtonStyle, MessageKeyboardType
-from service.models import MessageKeyboard, MessageKeyboardButton
+from service.models import MessageKeyboard, MessageKeyboardButton, MessageMedia
 
 from urllib.parse import unquote
 

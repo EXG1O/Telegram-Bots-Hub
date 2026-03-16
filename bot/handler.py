@@ -49,7 +49,7 @@ class Handler:
         if not trigger_id:
             return None
 
-        trigger: Trigger = await self.bot.service_api.get_trigger(id=trigger_id)
+        trigger: Trigger = await self.bot.service.get_trigger(id=trigger_id)
         connections: list[Connection] = []
 
         if trigger.command and message.text.startswith('/') and len(message.text) > 1:
@@ -87,7 +87,7 @@ class Handler:
 
         command, _, payload = message_text.removeprefix('/').partition(' ')
 
-        return await self.bot.service_api.get_triggers(
+        return await self.bot.service.get_triggers(
             command=command,
             command_payload=payload or None,
             has_command_payload=bool(payload),
@@ -100,10 +100,10 @@ class Handler:
             triggers_with_message_text,
             triggers_without_message_text,
         ) = await asyncio.gather(
-            self.bot.service_api.get_triggers(
+            self.bot.service.get_triggers(
                 has_message=True, has_message_text=True, has_target_connections=False
             ),
-            self.bot.service_api.get_triggers(
+            self.bot.service.get_triggers(
                 has_message=True, has_message_text=False, has_target_connections=False
             ),
         )
@@ -161,11 +161,11 @@ class Handler:
         buttons: list[MessageKeyboardButton] = []
 
         if callback_query and callback_query.data and callback_query.data.isdigit():
-            buttons = await self.bot.service_api.get_messages_keyboard_buttons(
+            buttons = await self.bot.service.get_messages_keyboard_buttons(
                 id=int(callback_query.data)
             )
         elif event_message and event_message.text:
-            buttons = await self.bot.service_api.get_messages_keyboard_buttons(
+            buttons = await self.bot.service.get_messages_keyboard_buttons(
                 text=event_message.text
             )
         else:

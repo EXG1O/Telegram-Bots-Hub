@@ -76,7 +76,7 @@ class TaskManager:
 
             tasks: list[
                 service.models.BackgroundTask
-            ] = await self.bot.service_api.get_background_tasks()
+            ] = await self.bot.service.get_background_tasks()
 
             if not tasks:
                 continue
@@ -101,9 +101,9 @@ class TaskManager:
                         continue
 
                     if not bot:
-                        bot = await self.bot.service_api.get_bot()
+                        bot = await self.bot.service.get_bot()
                     if users is None:
-                        users = await self.bot.service_api.get_users()
+                        users = await self.bot.service.get_users()
 
                     await asyncio.gather(
                         *[
