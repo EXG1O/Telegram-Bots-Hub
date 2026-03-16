@@ -1,4 +1,4 @@
-from telegram import User
+from telegram.models import User
 
 from service.schemas import CreateUser
 import service.models

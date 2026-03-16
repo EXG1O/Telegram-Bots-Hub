@@ -1,4 +1,4 @@
-from telegram import Update
+from telegram.models import Update
 
 from service.enums import ConnectionTargetObjectType
 from service.models import Connection

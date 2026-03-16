@@ -1,6 +1,4 @@
-from telegram import CallbackQuery, Chat, Message, Update, User
-from telegram.ext import Application, BaseHandler, ContextTypes, filters
-from telegram.ext._utils.types import FilterDataDict
+from telegram.models import CallbackQuery, Chat, Message, Update, User
 
 from service.models import Connection, MessageKeyboardButton, Trigger
 
@@ -20,7 +18,7 @@ else:
     Bot = Any
 
 
-class Handler(BaseHandler[Update, ContextTypes.DEFAULT_TYPE, None]):
+class Handler:
     def __init__(self, bot: Bot) -> None:
         self.bot = bot
         self.block: bool = True
@@ -177,43 +175,23 @@ class Handler(BaseHandler[Update, ContextTypes.DEFAULT_TYPE, None]):
             chain.from_iterable(button.source_connections for button in buttons)
         )
 
-    def check_update(self, update: object) -> bool | None:
-        if not isinstance(update, Update):
-            return None
-
-        result: FilterDataDict | bool | None = filters.TEXT.check_update(update)
-
-        if result:
-            return bool(result)
-        elif update.callback_query or update.pre_checkout_query:
-            return True
-
-        return False
-
-    async def handle_update(
-        self,
-        update: Update,
-        application: Application[Any, ContextTypes.DEFAULT_TYPE, Any, Any, Any, Any],
-        check_result: object,
-        context: ContextTypes.DEFAULT_TYPE,
-    ) -> None:
+    async def handle_update(self, update: Update) -> None:
         if update.pre_checkout_query:
-            await update.pre_checkout_query.answer(ok=True)
+            await self.bot.telegram.answer_pre_checkout_query(
+                pre_checkout_query_id=update.pre_checkout_query.id, ok=True
+            )
             return
 
         chat: Chat | None = update.effective_chat
         user: User | None = update.effective_user
 
         event_storage = EventStorage(
-            bot_id=self.bot.telegram.id,
+            bot_id=self.bot.telegram_id,
             chat_id=user.id if user else None,
             user_id=chat.id if chat else None,
         )
         variables = Variables(
-            bot=self.bot,
-            chat=update.effective_chat,
-            user=update.effective_user,
-            message=update.effective_message,
+            bot=self.bot, chat=chat, user=user, message=update.effective_message
         )
 
         await self.connection_handler.handle_many(

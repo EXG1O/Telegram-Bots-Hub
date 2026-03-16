@@ -1,4 +1,4 @@
-from telegram import Update
+from telegram.models import Update
 
 from aiohttp import (
     ClientError,
@@ -33,7 +33,7 @@ class APIRequestHandler(BaseHandler[APIRequest]):
                     headers={
                         'User-Agent': (
                             'ConstructorTelegramBots '
-                            f'(constructor.exg1o.org; bot_id={self.bot.telegram.id})'
+                            f'(constructor.exg1o.org; bot_id={self.bot.telegram_id})'
                         )
                     },
                     skip_auto_headers=['User-Agent'],

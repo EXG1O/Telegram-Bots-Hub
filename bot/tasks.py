@@ -1,5 +1,6 @@
-from telegram import Chat, Update, User
-from telegram.error import InvalidToken
+from telegram.enums import ChatType
+from telegram.exceptions import InvalidTokenError
+from telegram.models import Chat, Update, User
 
 import service.models
 
@@ -27,7 +28,7 @@ class TaskManager:
             while self.bot.app.running:
                 await asyncio.sleep(86400)
                 await self.bot.telegram.get_me()
-        except InvalidToken:
+        except InvalidTokenError:
             await self.bot.stop()
 
     async def _handle_background_task(
@@ -45,13 +46,13 @@ class TaskManager:
         update = Update(update_id=0)
         update._effective_user = User(
             id=user.telegram_id,
+            is_bot=False,
             first_name=user_first_name,
             last_name=user_last_name,
-            is_bot=False,
         )
         update._effective_chat = Chat(
             id=user.telegram_id,
-            type=Chat.PRIVATE,
+            type=ChatType.PRIVATE,
             first_name=user_first_name,
             last_name=user_last_name,
         )

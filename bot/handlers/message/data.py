@@ -1,21 +1,14 @@
-from telegram import (
-    InputMediaAudio,
-    InputMediaDocument,
-    InputMediaPhoto,
-    InputMediaVideo,
-)
+from telegram.models import InputMedia
 
 from typing import Literal, TypedDict
 
 
 class Media(TypedDict):
-    photo: list[InputMediaPhoto]
-    document: list[InputMediaDocument]
-    video: list[InputMediaVideo]
-    audio: list[InputMediaAudio]
+    photo: list[InputMedia]
+    document: list[InputMedia]
+    video: list[InputMedia]
+    audio: list[InputMedia]
 
 
 MediaType = Literal['photo', 'document', 'video', 'audio']
-MediaValue = list[
-    InputMediaPhoto | InputMediaDocument | InputMediaVideo | InputMediaAudio
-]
+MediaValue = list[InputMedia]
