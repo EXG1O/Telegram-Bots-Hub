@@ -31,22 +31,22 @@ class ConnectionHandler(BaseHandler[Connection]):
             ConnectionTargetObjectType, Callable[[int], Awaitable[Any]]
         ] = {
             ConnectionTargetObjectType.TRIGGER: (
-                lambda id: self.bot.service_api.get_trigger(id)
+                lambda id: self.bot.service.get_trigger(id)
             ),
             ConnectionTargetObjectType.MESSAGE: (
-                lambda id: self.bot.service_api.get_message(id)
+                lambda id: self.bot.service.get_message(id)
             ),
             ConnectionTargetObjectType.CONDITION: (
-                lambda id: self.bot.service_api.get_condition(id)
+                lambda id: self.bot.service.get_condition(id)
             ),
             ConnectionTargetObjectType.API_REQUEST: (
-                lambda id: self.bot.service_api.get_api_request(id)
+                lambda id: self.bot.service.get_api_request(id)
             ),
             ConnectionTargetObjectType.DATABASE_OPERATION: (
-                lambda id: self.bot.service_api.get_database_operation(id)
+                lambda id: self.bot.service.get_database_operation(id)
             ),
             ConnectionTargetObjectType.INVOICE: (
-                lambda id: self.bot.service_api.get_invoice(id)
+                lambda id: self.bot.service.get_invoice(id)
             ),
         }
         self.handlers: dict[ConnectionTargetObjectType, BaseHandler[Any]] = {

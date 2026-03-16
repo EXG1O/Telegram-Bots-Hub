@@ -1,4 +1,5 @@
-from .base_models import Media, MessageMedia
+import msgspec
+
 from .enums import (
     APIRequestMethod,
     BackgroundTaskInterval,
@@ -11,18 +12,26 @@ from .enums import (
     MessageKeyboardType,
 )
 
-from dataclasses import dataclass
 from typing import Any
 
 
-@dataclass(frozen=True)
-class Bot:
+class ServiceObject(msgspec.Struct):
+    pass
+
+
+class Media(ServiceObject):
+    name: str | None
+    size: int | None
+    url: str | None
+    from_url: str | None
+
+
+class Bot(ServiceObject):
     id: int
     is_private: bool
 
 
-@dataclass(frozen=True)
-class Connection:
+class Connection(ServiceObject):
     id: int
     source_object_type: ConnectionSourceObjectType
     source_object_id: int
@@ -30,45 +39,43 @@ class Connection:
     target_object_id: int
 
 
-@dataclass(frozen=True)
-class TriggerCommand:
+class TriggerCommand(ServiceObject):
     command: str
     payload: str | None
     description: str | None
 
 
-@dataclass(frozen=True)
-class TriggerMessage:
+class TriggerMessage(ServiceObject):
     text: str | None
 
 
-@dataclass(frozen=True)
-class Trigger:
+class Trigger(ServiceObject):
     id: int
     command: TriggerCommand | None
     message: TriggerMessage | None
     source_connections: list[Connection]
 
 
-@dataclass(frozen=True)
-class MessageSettings:
+class MessageSettings(ServiceObject):
     reply_to_user_message: bool
     delete_user_message: bool
     send_as_new_message: bool
 
 
-@dataclass(frozen=True)
+class MessageMedia(Media):
+    id: int
+    position: int
+
+
 class MessageImage(MessageMedia):
     pass
 
 
-@dataclass(frozen=True)
 class MessageDocument(MessageMedia):
     pass
 
 
-@dataclass(frozen=True)
-class MessageKeyboardButton:
+class MessageKeyboardButton(ServiceObject):
     id: int
     row: int
     position: int
@@ -78,14 +85,12 @@ class MessageKeyboardButton:
     source_connections: list[Connection]
 
 
-@dataclass(frozen=True)
-class MessageKeyboard:
+class MessageKeyboard(ServiceObject):
     type: MessageKeyboardType
     buttons: list[MessageKeyboardButton]
 
 
-@dataclass(frozen=True)
-class Message:
+class Message(ServiceObject):
     id: int
     text: str | None
     settings: MessageSettings
@@ -95,8 +100,7 @@ class Message:
     source_connections: list[Connection]
 
 
-@dataclass(frozen=True)
-class ConditionPart:
+class ConditionPart(ServiceObject):
     id: int
     type: ConditionPartType
     first_value: str
@@ -105,22 +109,19 @@ class ConditionPart:
     next_part_operator: ConditionPartNextPartOperator | None
 
 
-@dataclass(frozen=True)
-class Condition:
+class Condition(ServiceObject):
     id: int
     parts: list[ConditionPart]
     source_connections: list[Connection]
 
 
-@dataclass(frozen=True)
-class BackgroundTask:
+class BackgroundTask(ServiceObject):
     id: int
     interval: BackgroundTaskInterval
     source_connections: list[Connection]
 
 
-@dataclass(frozen=True)
-class APIRequest:
+class APIRequest(ServiceObject):
     id: int
     url: str
     method: APIRequestMethod
@@ -129,13 +130,11 @@ class APIRequest:
     source_connections: list[Connection]
 
 
-@dataclass(frozen=True)
-class DatabaseCreateOperation:
+class DatabaseCreateOperation(ServiceObject):
     data: dict[str, Any] | list[Any]
 
 
-@dataclass(frozen=True)
-class DatabaseUpdateOperation:
+class DatabaseUpdateOperation(ServiceObject):
     overwrite: bool
     lookup_field_name: str
     lookup_field_value: str
@@ -143,28 +142,24 @@ class DatabaseUpdateOperation:
     new_data: dict[str, Any] | list[Any]
 
 
-@dataclass(frozen=True)
-class DatabaseOperation:
+class DatabaseOperation(ServiceObject):
     id: int
     create_operation: DatabaseCreateOperation | None
     update_operation: DatabaseUpdateOperation | None
     source_connections: list[Connection]
 
 
-@dataclass(frozen=True)
 class InvoiceImage(Media):
     pass
 
 
-@dataclass(frozen=True)
-class InvoicePrice:
+class InvoicePrice(ServiceObject):
     id: int
     label: str
     amount: int
 
 
-@dataclass(frozen=True)
-class Invoice:
+class Invoice(ServiceObject):
     id: int
     title: str
     image: InvoiceImage | None
@@ -173,15 +168,13 @@ class Invoice:
     source_connections: list[Connection]
 
 
-@dataclass(frozen=True)
-class Variable:
+class Variable(ServiceObject):
     id: int
     name: str
     value: str
 
 
-@dataclass(frozen=True)
-class User:
+class User(ServiceObject):
     id: int
     telegram_id: int
     full_name: str
@@ -189,7 +182,6 @@ class User:
     is_blocked: bool
 
 
-@dataclass(frozen=True)
-class DatabaseRecord:
+class DatabaseRecord(ServiceObject):
     id: int
     data: dict[str, Any] | list[Any]

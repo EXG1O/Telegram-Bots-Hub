@@ -4,7 +4,7 @@ from telegram.models import BotCommand, Update, User
 
 from core.settings import SELF_URL, TELEGRAM_TOKEN
 from core.storage import bots
-from service import API
+from service.client import ServiceClient
 from service.models import Trigger
 
 from .handler import Handler
@@ -28,7 +28,7 @@ class Bot:
         self.telegram_id = int(token.split(':')[0])
         self.telegram = TelegramClient(bot_token=token)
         self.service_id = service_id
-        self.service_api = API(service_id)
+        self.service = ServiceClient(service_id)
         self.storage = Storage(bot_id=self.telegram_id)
         self.handler = Handler(self)
         self.task_manager = TaskManager(self)
@@ -54,7 +54,7 @@ class Bot:
         await self.handler.handle_update(update)
 
     async def set_menu_commands(self) -> None:
-        triggers: list[Trigger] = await self.service_api.get_triggers(
+        triggers: list[Trigger] = await self.service.get_triggers(
             has_command=True, has_command_payload=False, has_command_description=True
         )
 
