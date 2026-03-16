@@ -1,4 +1,4 @@
-from telegram import Update
+from telegram.models import Update
 
 from service.enums import ConditionPartNextPartOperator, ConditionPartOperator
 from service.models import Condition, Connection

@@ -1,4 +1,4 @@
-from telegram import Chat, Message, User
+from telegram.models import Chat, Message, User
 
 from service.models import DatabaseRecord, Variable
 
@@ -31,11 +31,11 @@ class Variables:
 
         self.store: dict[str, Any] = {}
         self.system_store: dict[str, Any] = {
-            'BOT_ID': bot.telegram.bot.id,
-            'BOT_NAME': bot.telegram.bot.name,
-            'BOT_USERNAME': bot.telegram.bot.username,
-            'BOT_FULL_NAME': bot.telegram.bot.full_name,
-            'BOT_LINK': bot.telegram.bot.link,
+            'BOT_ID': bot.me.id,
+            'BOT_NAME': bot.me.name,
+            'BOT_USERNAME': bot.me.username,
+            'BOT_FULL_NAME': bot.me.full_name,
+            'BOT_LINK': bot.me.link,
         }
 
         if chat:

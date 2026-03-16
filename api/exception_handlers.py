@@ -1,7 +1,7 @@
 from fastapi import Request, Response, status
 from fastapi.responses import JSONResponse
 
-from telegram.error import InvalidToken
+from telegram.exceptions import InvalidTokenError
 
 from api.exceptions import BotAlreadyEnabledError, NotFoundBotError
 
@@ -33,8 +33,8 @@ async def bot_already_enabled_exception_handler(
     )
 
 
-async def invalid_token_error_exception_handler(
-    request: Request, exception: InvalidToken
+async def invalid_token_exception_handler(
+    request: Request, exception: InvalidTokenError
 ) -> JSONResponse:
     return JSONResponse(
         {
@@ -50,5 +50,5 @@ EXCEPTION_HANDLERS: dict[
 ] = {
     NotFoundBotError: not_found_bot_exception_handler,
     BotAlreadyEnabledError: bot_already_enabled_exception_handler,
-    InvalidToken: invalid_token_error_exception_handler,
+    InvalidTokenError: invalid_token_exception_handler,
 }

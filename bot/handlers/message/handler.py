@@ -1,15 +1,7 @@
-from telegram import (
-    Chat,
-    InlineKeyboardMarkup,
-    InputMediaDocument,
-    InputMediaPhoto,
-    Message,
-    ReplyKeyboardMarkup,
-    Update,
-    User,
-)
-from telegram._utils.types import ReplyMarkup
 from telegram.constants import MediaGroupLimit
+from telegram.enums import InputMediaType
+from telegram.models import Chat, Message, ReplyParameters, Update, User
+from telegram.types import KeyboardMarkup
 
 from service.models import Connection
 from service.models import Message as ServiceMessage
@@ -46,12 +38,12 @@ class MessageHandler(BaseHandler[ServiceMessage]):
         chat_id: int,
         media: Media,
         text: str | None = None,
-        keyboard: ReplyMarkup | None = None,
-        reply_to_message_id: int | None = None,
+        reply_parameters: ReplyParameters | None = None,
+        keyboard: KeyboardMarkup | None = None,
     ) -> list[Message]:
         kwargs: dict[str, Any] = {
             'chat_id': chat_id,
-            'reply_to_message_id': reply_to_message_id,
+            'reply_parameters': reply_parameters,
         }
 
         new_bot_messages: list[Message] = []
@@ -115,12 +107,18 @@ class MessageHandler(BaseHandler[ServiceMessage]):
         chat_storage: Storage,
         variables: Variables,
     ) -> None:
-        reply_to_message_id: int | None = (
-            event_message_id if message.settings.reply_to_user_message else None
+        reply_parameters = (
+            ReplyParameters(message_id=event_message_id)
+            if message.settings.reply_to_user_message and event_message_id
+            else None
         )
         media = Media(
-            photo=prepare_media(InputMediaPhoto, message.images),
-            document=prepare_media(InputMediaDocument, message.documents),
+            photo=prepare_media(
+                type=InputMediaType.PHOTO, message_media=message.images
+            ),
+            document=prepare_media(
+                type=InputMediaType.DOCUMENT, message_media=message.documents
+            ),
             video=[],
             audio=[],
         )
@@ -133,7 +131,7 @@ class MessageHandler(BaseHandler[ServiceMessage]):
             if message.text
             else None
         )
-        keyboard: ReplyKeyboardMarkup | InlineKeyboardMarkup | None = (
+        keyboard: KeyboardMarkup | None = (
             build_keyboard(message.keyboard) if message.keyboard else None
         )
 
@@ -142,8 +140,8 @@ class MessageHandler(BaseHandler[ServiceMessage]):
         if text and not any(media.values()):
             last_bot_messages.append(
                 await self.bot.telegram.send_message(
-                    chat.id,
-                    reply_to_message_id=reply_to_message_id,
+                    chat_id=chat.id,
+                    reply_parameters=reply_parameters,
                     text=text,
                     reply_markup=keyboard,
                 )
@@ -151,8 +149,8 @@ class MessageHandler(BaseHandler[ServiceMessage]):
         else:
             last_bot_messages.extend(
                 await self._send_media_group(
-                    chat.id,
-                    reply_to_message_id=reply_to_message_id,
+                    chat_id=chat.id,
+                    reply_parameters=reply_parameters,
                     media=media,
                     text=text,
                     keyboard=keyboard,
@@ -161,7 +159,7 @@ class MessageHandler(BaseHandler[ServiceMessage]):
 
         await chat_storage.set(
             'last_bot_message_ids',
-            [last_bot_message.id for last_bot_message in last_bot_messages],
+            [last_bot_message.message_id for last_bot_message in last_bot_messages],
         )
 
     async def handle(

@@ -1,6 +1,6 @@
-from telegram import BotCommand, Update, User
-from telegram.constants import ParseMode, UpdateType
-from telegram.ext import ApplicationBuilder, Defaults
+from telegram.client import TelegramClient
+from telegram.enums import UpdateType
+from telegram.models import BotCommand, Update, User
 
 from core.settings import SELF_URL, TELEGRAM_TOKEN
 from core.storage import bots
@@ -8,7 +8,6 @@ from service import API
 from service.models import Trigger
 
 from .handler import Handler
-from .request import ResilientHTTPXRequest
 from .storage import Storage
 from .tasks import TaskManager
 from .utils.validation import is_valid_user
@@ -22,29 +21,37 @@ COMMAND_CLEANUP_PATTERN: Final[re.Pattern[str]] = re.compile(f'[{string.punctuat
 
 
 class Bot:
+    _me: User | None = None
+
     def __init__(self, service_id: int, token: str):
-        self.app = (
-            ApplicationBuilder()
-            .token(token)
-            .defaults(Defaults(parse_mode=ParseMode.HTML))
-            .request(ResilientHTTPXRequest(read_timeout=20))
-            .updater(None)
-            .build()
-        )
-        self.telegram = self.app.bot
+        self.token = token
+        self.telegram_id = int(token.split(':')[0])
+        self.telegram = TelegramClient(bot_token=token)
         self.service_id = service_id
         self.service_api = API(service_id)
-        self.storage = Storage(bot_id=int(token.split(':')[0]))
+        self.storage = Storage(bot_id=self.telegram_id)
         self.handler = Handler(self)
         self.task_manager = TaskManager(self)
 
+    @property
+    def me(self) -> User:
+        if not self._me:
+            raise RuntimeError('Bot is not started yet.')
+        return self._me
+
     async def feed_webhook_update(self, update: Update) -> None:
-        user: User | None = update.effective_user
-
-        if not (user and (user.is_bot or await is_valid_user(self, user))):
+        if not (
+            (
+                (user := update.effective_user)
+                and (user.is_bot or await is_valid_user(self, user))
+                and (message := update.effective_message)
+                and message.text
+            )
+            or update.callback_query
+            or update.pre_checkout_query
+        ):
             return
-
-        await self.app.update_queue.put(update)
+        await self.handler.handle_update(update)
 
     async def set_menu_commands(self) -> None:
         triggers: list[Trigger] = await self.service_api.get_triggers(
@@ -66,9 +73,8 @@ class Bot:
         )
 
     async def start(self) -> None:
-        self.app.add_handler(self.handler)
-
-        await asyncio.gather(
+        self._me, *_ = await asyncio.gather(
+            self.telegram.get_me(),
             self.set_menu_commands(),
             self.telegram.set_webhook(
                 f'{SELF_URL}/bots/{self.service_id}/webhook/',
@@ -80,9 +86,6 @@ class Bot:
                 secret_token=TELEGRAM_TOKEN,
             ),
         )
-
-        await self.app.initialize()
-        await self.app.start()
         await self.task_manager.start()
 
     async def stop(self) -> None:
@@ -91,5 +94,3 @@ class Bot:
         finally:
             del bots[self.service_id]
             await self.task_manager.stop()
-            await self.app.stop()
-            await self.app.shutdown()

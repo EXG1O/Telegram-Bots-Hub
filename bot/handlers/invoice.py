@@ -1,4 +1,4 @@
-from telegram import Chat, LabeledPrice, Update
+from telegram.models import Chat, LabeledPrice, Update
 
 from service.models import Connection, Invoice
 
@@ -37,9 +37,6 @@ class InvoiceHandler(BaseHandler[Invoice]):
             title=title,
             photo_url=photo_url,
             description=description,
-            provider_token='',
-            payload='',
-            currency='XTR',
             prices=[
                 LabeledPrice(price.label, price.amount) for price in invoice.prices
             ],

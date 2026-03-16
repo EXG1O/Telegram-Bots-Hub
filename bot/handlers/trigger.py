@@ -1,4 +1,4 @@
-from telegram import Update
+from telegram.models import Update
 
 from service.models import Trigger
 

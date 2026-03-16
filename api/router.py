@@ -1,7 +1,9 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, Request
 
-from telegram import Update
-from telegram.error import TelegramError
+from telegram.exceptions import TelegramError
+from telegram.models import Update
+
+import msgspec
 
 from bot import Bot
 from core.storage import bots
@@ -12,6 +14,9 @@ from .schemas import StartBotRequest
 
 router = APIRouter()
 bots_router = APIRouter(prefix='/bots', dependencies=[Depends(verify_self_token)])
+
+
+update_decoder = msgspec.json.Decoder(Update)
 
 
 @bots_router.get('/')
@@ -38,7 +43,7 @@ async def restart_bot(bot_service_id: BotServiceID) -> None:
     old_bot: Bot = bots[bot_service_id]
     await old_bot.stop()
 
-    bot = Bot(bot_service_id, old_bot.telegram.token)
+    bot = Bot(bot_service_id, old_bot.token)
     bots[bot_service_id] = bot
 
     try:
@@ -59,11 +64,7 @@ async def bot_webhook(
     bot_service_id: BotServiceID, request: Request, background_tasks: BackgroundTasks
 ) -> None:
     bot: Bot = bots[bot_service_id]
-    update: Update | None = Update.de_json(await request.json(), bot.app.bot)
-
-    if not update:
-        return
-
+    update: Update = update_decoder.decode(await request.body())
     background_tasks.add_task(bot.feed_webhook_update, update)
 
 
