@@ -52,7 +52,7 @@ def build_keyboard(
                 [
                     KeyboardButton(
                         text=button.text,
-                        style=KeyboardButtonStyle(button.style)
+                        style=KeyboardButtonStyle(button.style.value)
                         if button.style != MessageKeyboardButtonStyle.DEFAULT
                         else None,
                     )
@@ -68,7 +68,7 @@ def build_keyboard(
             [
                 InlineKeyboardButton(
                     text=button.text,
-                    style=KeyboardButtonStyle(button.style)
+                    style=KeyboardButtonStyle(button.style.value)
                     if button.style != MessageKeyboardButtonStyle.DEFAULT
                     else None,
                     url=button.url,
