@@ -43,7 +43,7 @@ class Bot:
         if not (
             (
                 (user := update.effective_user)
-                and (user.is_bot or await is_valid_user(self, user))
+                and (user.is_bot or await is_valid_user(self, user=user))
                 and (message := update.effective_message)
                 and message.text
             )
