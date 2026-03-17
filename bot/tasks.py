@@ -25,7 +25,7 @@ class TaskManager:
 
     async def _monitor_token(self) -> None:
         try:
-            while self.bot.app.running:
+            while True:
                 await asyncio.sleep(86400)
                 await self.bot.telegram.get_me()
         except InvalidTokenError:
@@ -61,7 +61,7 @@ class TaskManager:
             update,
             task.source_connections,
             EventStorage(
-                bot_id=self.bot.telegram.id,
+                bot_id=self.bot.telegram_id,
                 chat_id=user.telegram_id,
                 user_id=user.telegram_id,
             ),
@@ -71,7 +71,7 @@ class TaskManager:
         )
 
     async def _process_background_tasks(self) -> None:
-        while self.bot.app.running:
+        while True:
             await asyncio.sleep(3600)
 
             tasks: list[
