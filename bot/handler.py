@@ -187,8 +187,8 @@ class Handler:
 
         event_storage = EventStorage(
             bot_id=self.bot.telegram_id,
-            chat_id=user.id if user else None,
-            user_id=chat.id if chat else None,
+            chat_id=chat.id if chat else None,
+            user_id=user.id if user else None,
         )
         variables = Variables(
             bot=self.bot, chat=chat, user=user, message=update.effective_message
