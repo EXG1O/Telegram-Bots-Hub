@@ -16,6 +16,7 @@ from .models import (
     Invoice,
     Message,
     MessageKeyboardButton,
+    TemporaryVariable,
     Trigger,
     User,
     Variable,
@@ -53,6 +54,8 @@ get_database_operations_decoder = msgspec.json.Decoder(list[DatabaseOperation])
 get_database_operation_decoder = msgspec.json.Decoder(DatabaseOperation)
 get_invoices_decoder = msgspec.json.Decoder(list[Invoice])
 get_invoice_decoder = msgspec.json.Decoder(Invoice)
+get_temporary_variables_decoder = msgspec.json.Decoder(list[TemporaryVariable])
+get_temporary_variable_decoder = msgspec.json.Decoder(TemporaryVariable)
 get_variables_decoder = msgspec.json.Decoder(list[Variable])
 get_variable_decoder = msgspec.json.Decoder(Variable)
 get_users_decoder = msgspec.json.Decoder(list[User])
@@ -232,6 +235,20 @@ class ServiceClient:
     async def get_invoice(self, id: int) -> Invoice:
         return await self._request(
             hdrs.METH_GET, f'invoices/{id}/', decoder=get_invoice_decoder
+        )
+
+    async def get_temporary_variables(self) -> list[TemporaryVariable]:
+        return await self._request(
+            hdrs.METH_GET,
+            'temporary-variables/',
+            decoder=get_temporary_variables_decoder,
+        )
+
+    async def get_temporary_variable(self, id: int) -> TemporaryVariable:
+        return await self._request(
+            hdrs.METH_GET,
+            f'temporary-variables/{id}/',
+            decoder=get_temporary_variable_decoder,
         )
 
     async def get_variables(self, name: str | None = None) -> list[Variable]:

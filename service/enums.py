@@ -10,6 +10,7 @@ class ConnectionSourceObjectType(StrEnum):
     API_REQUEST = 'api_request'
     DATABASE_OPERATION = 'database_operation'
     INVOICE = 'invoice'
+    TEMPORARY_VARIABLE = 'temporary_variable'
 
 
 class ConnectionTargetObjectType(StrEnum):
@@ -19,6 +20,7 @@ class ConnectionTargetObjectType(StrEnum):
     API_REQUEST = 'api_request'
     DATABASE_OPERATION = 'database_operation'
     INVOICE = 'invoice'
+    TEMPORARY_VARIABLE = 'temporary_variable'
 
 
 class APIRequestMethod(StrEnum):
