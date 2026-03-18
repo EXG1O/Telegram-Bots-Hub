@@ -16,11 +16,14 @@ from .trigger import TriggerHandler
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
 import asyncio
+import logging
 
 if TYPE_CHECKING:
     from ..bot import Bot
 else:
     Bot = Any
+
+logger = logging.getLogger(__name__)
 
 
 class ConnectionHandler(BaseHandler[Connection]):
@@ -84,6 +87,16 @@ class ConnectionHandler(BaseHandler[Connection]):
     async def handle_many(
         self, update: Update, connections: list[Connection], context: HandlerContext
     ) -> None:
-        await asyncio.gather(
-            *[self.handle(update, connection, context) for connection in connections]
+        results: list[BaseException | None] = await asyncio.gather(
+            *[self.handle(update, connection, context) for connection in connections],
+            return_exceptions=True,
         )
+
+        if logger.isEnabledFor(logging.DEBUG):
+            for result, connection in zip(results, connections, strict=False):
+                if isinstance(result, BaseException):
+                    logger.debug(
+                        'Failed handling of connection (id=%s).',
+                        connection.id,
+                        exc_info=result,
+                    )

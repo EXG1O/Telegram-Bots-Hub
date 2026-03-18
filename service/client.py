@@ -29,6 +29,10 @@ from .schemas import (
 )
 
 from typing import Any, Final
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 HEADERS: Final[LooseHeaders] = {
     hdrs.AUTHORIZATION: f'Token {SERVICE_TOKEN}',
@@ -103,14 +107,18 @@ class ServiceClient:
         data: Any | None = None,
         params: dict[str, str] | None = None,
     ) -> T:
-        async with self.session.request(
-            method=method,
-            url=self.root_url / endpoint,
-            data=data and json_encoder.encode(data),
-            params=params,
-        ) as response:
-            body: bytes = await response.read()
-        return decoder.decode(body)
+        try:
+            async with self.session.request(
+                method=method,
+                url=self.root_url / endpoint,
+                data=data and json_encoder.encode(data),
+                params=params,
+            ) as response:
+                body: bytes = await response.read()
+            return decoder.decode(body)
+        except Exception as error:
+            logger.exception('Failed request to the main service.')
+            raise error
 
     async def get_bot(self) -> Bot:
         return await self._request(hdrs.METH_GET, '', decoder=get_bot_decoder)
