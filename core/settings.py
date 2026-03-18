@@ -4,6 +4,7 @@ from yarl import URL
 from pathlib import Path
 from secrets import token_hex
 from typing import Final
+import logging.config
 import os
 
 load_dotenv()
@@ -28,3 +29,48 @@ SERVICE_UNIX_SOCK: Final[Path | None] = (
     Path(path) if (path := os.getenv('SERVICE_UNIX_SOCK')) else None
 )
 SERVICE_TOKEN: Final[str] = os.environ['SERVICE_TOKEN']
+
+
+logging.config.dictConfig(
+    {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'formatters': {
+            'verbose': {
+                'format': '[{asctime}]: {levelname}: {name} > {funcName} || {message}',
+                'style': '{',
+            },
+            'simple': {
+                'format': '[{asctime}]: {message}',
+                'style': '{',
+            },
+        },
+        'handlers': {
+            'console': {
+                'level': 'DEBUG',
+                'class': 'logging.StreamHandler',
+                'formatter': 'simple',
+            },
+            'info_file': {
+                'level': 'DEBUG',
+                'class': 'logging.handlers.RotatingFileHandler',
+                'filename': LOGS_DIR / 'app_info.log',
+                'maxBytes': 5 * 1024**2,
+                'backupCount': 10,
+                'formatter': 'verbose',
+            },
+            'error_file': {
+                'level': 'WARNING',
+                'class': 'logging.handlers.RotatingFileHandler',
+                'filename': LOGS_DIR / 'app_error.log',
+                'maxBytes': 5 * 1024**2,
+                'backupCount': 10,
+                'formatter': 'verbose',
+            },
+        },
+        'root': {
+            'handlers': ['console', 'info_file', 'error_file'],
+            'level': 'DEBUG' if DEBUG else 'INFO',
+        },
+    }
+)

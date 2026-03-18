@@ -31,6 +31,10 @@ from .types import KeyboardMarkup
 from http import HTTPStatus
 from typing import Any, Final
 import asyncio
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 HEADERS: Final[LooseHeaders] = {
     hdrs.USER_AGENT: 'ConstructorTelegramBots (constructor.exg1o.org)',
@@ -73,40 +77,44 @@ class TelegramClient:
         decoder: msgspec.json.Decoder[TelegramResponse[T]],
         data: dict[str, Any] | None = None,
     ) -> T:
-        async with self.session.post(
-            self.url / endpoint,
-            data=data and json_encoder.encode(prepare_request_data(data)),
-        ) as response:
-            body: bytes = await response.read()
+        try:
+            async with self.session.post(
+                self.url / endpoint,
+                data=data and json_encoder.encode(prepare_request_data(data)),
+            ) as response:
+                body: bytes = await response.read()
 
-        response_status = HTTPStatus(response.status)
-        response_data: TelegramResponse[T] = decoder.decode(body)
+            response_status = HTTPStatus(response.status)
+            response_data: TelegramResponse[T] = decoder.decode(body)
 
-        if response_status.is_success and response_data.result:
-            return response_data.result
+            if response_status.is_success and response_data.result:
+                return response_data.result
 
-        message: str | None = response_data.description
+            message: str | None = response_data.description
 
-        if not message:
-            message = f'{response_status.description} ({response_status})'
+            if not message:
+                message = f'{response_status.description} ({response_status})'
 
-        if parameters := response_data.parameters:
-            if parameters.migrate_to_chat_id:
-                raise ChatMigratedError(message)
-            elif retry_after := parameters.retry_after:
-                await asyncio.sleep(retry_after)
-                return await self._request(endpoint, decoder, data)
+            if parameters := response_data.parameters:
+                if parameters.migrate_to_chat_id:
+                    raise ChatMigratedError(message)  # noqa: TRY301
+                elif retry_after := parameters.retry_after:
+                    await asyncio.sleep(retry_after)
+                    return await self._request(endpoint, decoder, data)
 
-        if response_status in (HTTPStatus.NOT_FOUND, HTTPStatus.UNAUTHORIZED):
-            raise InvalidTokenError(message)
-        elif response_status == HTTPStatus.FORBIDDEN:
-            raise ForbiddenError(message)
-        elif response_status == HTTPStatus.BAD_REQUEST:
-            raise BadRequestError(message)
-        elif response_status == HTTPStatus.CONFLICT:
-            raise ConflictError(message)
+            if response_status in (HTTPStatus.NOT_FOUND, HTTPStatus.UNAUTHORIZED):
+                raise InvalidTokenError(message)  # noqa: TRY301
+            elif response_status == HTTPStatus.FORBIDDEN:
+                raise ForbiddenError(message)  # noqa: TRY301
+            elif response_status == HTTPStatus.BAD_REQUEST:
+                raise BadRequestError(message)  # noqa: TRY301
+            elif response_status == HTTPStatus.CONFLICT:
+                raise ConflictError(message)  # noqa: TRY301
 
-        raise NetworkError()
+            raise NetworkError(message)  # noqa: TRY301
+        except Exception as error:
+            logger.exception('Failed request to the Telegram Bot API.')
+            raise error
 
     async def get_me(self) -> User:
         return await self._request('getMe', decoder=get_me_decoder)

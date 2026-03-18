@@ -12,11 +12,14 @@ from .utils.validation import is_valid_user
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 import asyncio
+import logging
 
 if TYPE_CHECKING:
     from ..bot import Bot
 else:
     Bot = Any
+
+logger = logging.getLogger(__name__)
 
 
 class TaskManager:
@@ -84,38 +87,48 @@ class TaskManager:
             )
 
             for task in tasks:
-                try:
-                    if (
-                        datetime.fromisoformat(
-                            storage_tasks.setdefault(
-                                str(task.id), datetime.isoformat(current_datetime)
-                            )
+                if (
+                    datetime.fromisoformat(
+                        storage_tasks.setdefault(
+                            str(task.id), datetime.isoformat(current_datetime)
                         )
-                        + timedelta(days=task.interval.value)
-                    ) > current_datetime:
-                        continue
-
-                    if service_users is None:
-                        service_users = await self.bot.service.get_users()
-
-                    if not service_users:
-                        break
-
-                    if service_bot is None:
-                        service_bot = await self.bot.service.get_bot()
-
-                    await asyncio.gather(
-                        *[
-                            self._handle_background_task(
-                                service_bot, service_user, task
-                            )
-                            for service_user in service_users
-                        ]
                     )
+                    + timedelta(days=task.interval.value)
+                ) > current_datetime:
+                    continue
 
-                    storage_tasks[str(task.id)] = datetime.isoformat(current_datetime)
-                except Exception:
-                    pass  # FIXME: In the future, error logging will be added here.
+                if service_users is None:
+                    service_users = await self.bot.service.get_users()
+
+                if not service_users:
+                    break
+
+                if service_bot is None:
+                    service_bot = await self.bot.service.get_bot()
+
+                results: list[BaseException | None] = await asyncio.gather(
+                    *[
+                        self._handle_background_task(service_bot, service_user, task)
+                        for service_user in service_users
+                    ],
+                    return_exceptions=True,
+                )
+
+                if logger.isEnabledFor(logging.DEBUG):
+                    for result, service_user in zip(
+                        results, service_users, strict=False
+                    ):
+                        logger.debug(
+                            (
+                                'Failed handling of background task (id=%s) '
+                                'for user (service_id=%s).'
+                            ),
+                            task.id,
+                            service_user.id,
+                            exc_info=result,
+                        )
+
+                storage_tasks[str(task.id)] = datetime.isoformat(current_datetime)
 
             await self.bot.storage.set('background_tasks', storage_tasks)
 

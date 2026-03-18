@@ -12,10 +12,16 @@ from .storage import Storage
 from .tasks import TaskManager
 from .utils.validation import is_valid_user
 
+from collections.abc import Awaitable
 from typing import Final
 import asyncio
+import logging
 import re
 import string
+import time
+
+logger = logging.getLogger(__name__)
+
 
 COMMAND_CLEANUP_PATTERN: Final[re.Pattern[str]] = re.compile(f'[{string.punctuation}]')
 
@@ -51,7 +57,20 @@ class Bot:
             or update.pre_checkout_query
         ):
             return
-        await self.handler.handle_update(update)
+
+        task: Awaitable[None] = self.handler.handle_update(update)
+
+        if logger.isEnabledFor(logging.DEBUG):
+            start_time: float = time.perf_counter()
+            await task
+            elapsed_time: float = time.perf_counter() - start_time
+            logger.debug(
+                'Processing of update (id=%s) completed in %s.f3 ms.',
+                update.update_id,
+                elapsed_time * 1000,
+            )
+        else:
+            await task
 
     async def set_menu_commands(self) -> None:
         triggers: list[Trigger] = await self.service.get_triggers(
