@@ -10,9 +10,8 @@ from aiohttp import (
 
 from service.models import APIRequest, Connection
 
-from ...storage import EventStorage
+from ...context import HandlerContext
 from ...utils.variables import replace_data_variables
-from ...variables import Variables
 from ..base import BaseHandler
 from .resolver import SafeResolver
 from .utils import get_safe_headers, parse_response_body
@@ -20,11 +19,7 @@ from .utils import get_safe_headers, parse_response_body
 
 class APIRequestHandler(BaseHandler[APIRequest]):
     async def handle(
-        self,
-        update: Update,
-        api_request: APIRequest,
-        event_storage: EventStorage,
-        variables: Variables,
+        self, update: Update, api_request: APIRequest, context: HandlerContext
     ) -> list[Connection] | None:
         try:
             async with (
@@ -45,12 +40,12 @@ class APIRequestHandler(BaseHandler[APIRequest]):
                     api_request.url,
                     headers=get_safe_headers(api_request.headers),
                     json=await replace_data_variables(
-                        api_request.body, variables, deserialize=True
+                        api_request.body, context.variables, deserialize=True
                     ),
                     allow_redirects=False,
                 ) as response,
             ):
-                variables.add(
+                context.variables.add(
                     'API_RESPONSE',
                     parse_response_body(await response.content.read(2048)),
                 )

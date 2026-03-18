@@ -1,19 +1,22 @@
-from multidict import CIMultiDict
+from aiohttp import hdrs
+from multidict import CIMultiDict, istr
+import msgspec
+
+from core.msgspec import json_decoder
 
 from typing import Any, Final
-import json
 
-FORBIDDEN_HEADERS: Final[list[str]] = [
-    'Connection',
-    'Content-Length',
-    'Content-Type',
-    'Host',
-    'Proxy-Authorization',
-    'Proxy-Connection',
-    'TE',
-    'Transfer-Encoding',
-    'Upgrade',
-    'User-Agent',
+FORBIDDEN_HEADERS: Final[list[istr]] = [
+    hdrs.CONNECTION,
+    hdrs.CONTENT_LENGTH,
+    hdrs.CONTENT_TYPE,
+    hdrs.HOST,
+    hdrs.PROXY_AUTHORIZATION,
+    istr('Proxy-Connection'),
+    hdrs.TE,
+    hdrs.TRANSFER_ENCODING,
+    hdrs.UPGRADE,
+    hdrs.USER_AGENT,
 ]
 
 
@@ -29,6 +32,6 @@ def get_safe_headers(base_headers: dict[str, str] | None = None) -> CIMultiDict[
 
 def parse_response_body(body: bytes) -> Any:
     try:
-        return json.loads(body)
-    except json.JSONDecodeError:
+        return json_decoder.decode(body)
+    except msgspec.DecodeError:
         return body.decode()

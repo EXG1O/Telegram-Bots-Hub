@@ -34,8 +34,9 @@ async def start_bot(bot_service_id: int, request: StartBotRequest) -> None:
 
     try:
         await bot.start()
-    except TelegramError:
+    except TelegramError as error:
         del bots[bot_service_id]
+        raise error
 
 
 @bots_router.post('/{bot_service_id}/restart/')
@@ -48,8 +49,9 @@ async def restart_bot(bot_service_id: BotServiceID) -> None:
 
     try:
         await bot.start()
-    except TelegramError:
+    except TelegramError as error:
         del bots[bot_service_id]
+        raise error
 
 
 @bots_router.post('/{bot_service_id}/stop/')
@@ -63,9 +65,10 @@ async def stop_bot(bot_service_id: BotServiceID) -> None:
 async def bot_webhook(
     bot_service_id: BotServiceID, request: Request, background_tasks: BackgroundTasks
 ) -> None:
-    bot: Bot = bots[bot_service_id]
-    update: Update = update_decoder.decode(await request.body())
-    background_tasks.add_task(bot.feed_webhook_update, update)
+    background_tasks.add_task(
+        bots[bot_service_id].feed_webhook_update,
+        update_decoder.decode(await request.body()),
+    )
 
 
 router.include_router(bots_router)

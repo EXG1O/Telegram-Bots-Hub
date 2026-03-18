@@ -1,9 +1,10 @@
-from telegram.models import CallbackQuery, Chat, Message, Update, User
+from telegram.models import CallbackQuery, Message, Update
 
 from service.models import Connection, MessageKeyboardButton, Trigger
 
+from .context import HandlerContext
 from .handlers.connection import ConnectionHandler
-from .storage import EventStorage
+from .storage import Storage
 from .utils.variables import replace_text_variables
 from .variables import Variables
 
@@ -21,12 +22,9 @@ else:
 class Handler:
     def __init__(self, bot: Bot) -> None:
         self.bot = bot
-        self.block: bool = True
         self.connection_handler = ConnectionHandler(self.bot)
         self.connection_fetchers: Sequence[
-            Callable[
-                [Update, EventStorage, Variables], Awaitable[list[Connection] | None]
-            ]
+            Callable[[Update, HandlerContext], Awaitable[list[Connection] | None]]
         ] = [
             self._get_wait_trigger_connections,
             self._get_trigger_connections,
@@ -34,9 +32,11 @@ class Handler:
         ]
 
     async def _get_wait_trigger_connections(
-        self, update: Update, event_storage: EventStorage, variables: Variables
+        self, update: Update, context: HandlerContext
     ) -> list[Connection] | None:
-        if not event_storage.user:
+        user_storage: Storage | None = context.user_storage
+
+        if not user_storage:
             return None
 
         message: Message | None = update.effective_message
@@ -44,7 +44,7 @@ class Handler:
         if not message or not message.text:
             return None
 
-        trigger_id: int | None = await event_storage.user.get('expected_trigger_id')
+        trigger_id: int | None = await user_storage.get('expected_trigger_id')
 
         if not trigger_id:
             return None
@@ -67,7 +67,11 @@ class Handler:
                 and trigger.message.text
                 and (
                     message.text
-                    == (await replace_text_variables(trigger.message.text, variables))
+                    == (
+                        await replace_text_variables(
+                            trigger.message.text, context.variables
+                        )
+                    )
                 )
             )
             or trigger.message
@@ -77,7 +81,7 @@ class Handler:
         else:
             return None
 
-        await event_storage.user.delete('expected_trigger_id')
+        await user_storage.delete('expected_trigger_id')
 
         return connections
 
@@ -130,7 +134,7 @@ class Handler:
         ] + triggers_without_message_text
 
     async def _get_trigger_connections(
-        self, update: Update, event_storage: EventStorage, variables: Variables
+        self, update: Update, context: HandlerContext
     ) -> list[Connection] | None:
         message: Message | None = update.effective_message
 
@@ -145,7 +149,7 @@ class Handler:
                         None,
                         await asyncio.gather(
                             self._get_command_triggers(message.text),
-                            self._get_message_triggers(message.text, variables),
+                            self._get_message_triggers(message.text, context.variables),
                         ),
                     )
                 )
@@ -153,7 +157,7 @@ class Handler:
         )
 
     async def _get_command_keyboard_button_connections(
-        self, update: Update, event_storage: EventStorage, variables: Variables
+        self, update: Update, context: HandlerContext
     ) -> list[Connection] | None:
         event_message: Message | None = update.effective_message
         callback_query: CallbackQuery | None = update.callback_query
@@ -182,17 +186,7 @@ class Handler:
             )
             return
 
-        chat: Chat | None = update.effective_chat
-        user: User | None = update.effective_user
-
-        event_storage = EventStorage(
-            bot_id=self.bot.telegram_id,
-            chat_id=chat.id if chat else None,
-            user_id=user.id if user else None,
-        )
-        variables = Variables(
-            bot=self.bot, chat=chat, user=user, message=update.effective_message
-        )
+        context = HandlerContext(self.bot, update)
 
         await self.connection_handler.handle_many(
             update,
@@ -202,13 +196,12 @@ class Handler:
                         None,
                         await asyncio.gather(
                             *[
-                                fetcher(update, event_storage, variables)
+                                fetcher(update, context)
                                 for fetcher in self.connection_fetchers
                             ]
                         ),
                     )
                 )
             ),
-            event_storage,
-            variables,
+            context,
         )

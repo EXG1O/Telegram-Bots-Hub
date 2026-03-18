@@ -2,9 +2,8 @@ from telegram.models import Chat, LabeledPrice, Update
 
 from service.models import Connection, Invoice
 
-from ..storage import EventStorage
+from ..context import HandlerContext
 from ..utils.variables import replace_text_variables
-from ..variables import Variables
 from .base import BaseHandler
 
 import asyncio
@@ -12,11 +11,7 @@ import asyncio
 
 class InvoiceHandler(BaseHandler[Invoice]):
     async def handle(
-        self,
-        update: Update,
-        invoice: Invoice,
-        event_storage: EventStorage,
-        variables: Variables,
+        self, update: Update, invoice: Invoice, context: HandlerContext
     ) -> list[Connection] | None:
         chat: Chat | None = update.effective_chat
 
@@ -24,8 +19,8 @@ class InvoiceHandler(BaseHandler[Invoice]):
             return None
 
         title, description = await asyncio.gather(
-            replace_text_variables(invoice.title, variables),
-            replace_text_variables(invoice.description, variables),
+            replace_text_variables(invoice.title, context.variables),
+            replace_text_variables(invoice.description, context.variables),
         )
         photo_url: str | None = None
 

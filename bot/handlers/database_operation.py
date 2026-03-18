@@ -9,9 +9,8 @@ from service.models import (
 )
 from service.schemas import CreateDatabaseRecord, UpdateDatabaseRecords
 
-from ..storage import EventStorage
+from ..context import HandlerContext
 from ..utils.variables import replace_data_variables, replace_text_variables
-from ..variables import Variables
 from .base import BaseHandler
 
 import asyncio
@@ -23,8 +22,7 @@ class DatabaseOperationHandler(BaseHandler[DatabaseOperation]):
         self,
         update: Update,
         database_operation: DatabaseOperation,
-        event_storage: EventStorage,
-        variables: Variables,
+        context: HandlerContext,
     ) -> list[Connection] | None:
         create_operation: DatabaseCreateOperation | None = (
             database_operation.create_operation
@@ -37,18 +35,18 @@ class DatabaseOperationHandler(BaseHandler[DatabaseOperation]):
             await self.bot.service.create_database_record(
                 CreateDatabaseRecord(
                     data=await replace_data_variables(
-                        create_operation.data, variables, deserialize=True
+                        create_operation.data, context.variables, deserialize=True
                     )
                 )
             )
         elif update_operation:
             data, lookup_field_value = await asyncio.gather(
                 replace_data_variables(
-                    update_operation.new_data, variables, deserialize=True
+                    update_operation.new_data, context.variables, deserialize=True
                 ),
                 replace_text_variables(
                     update_operation.lookup_field_value,
-                    variables,
+                    context.variables,
                     deserialize=True,
                 ),
             )

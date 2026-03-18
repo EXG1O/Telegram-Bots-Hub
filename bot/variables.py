@@ -4,7 +4,8 @@ from service.models import DatabaseRecord, Variable
 
 from .utils.html import process_html_text
 
-from typing import TYPE_CHECKING, Any, Self
+from typing import TYPE_CHECKING, Any
+import copy
 import re
 
 if TYPE_CHECKING:
@@ -25,10 +26,6 @@ class Variables:
         message: Message | None = None,
     ):
         self.bot = bot
-        self.chat = chat
-        self.user = user
-        self.message = message
-
         self.store: dict[str, Any] = {}
         self.system_store: dict[str, Any] = {
             'BOT_ID': bot.me.id,
@@ -74,10 +71,10 @@ class Variables:
                 }
             )
 
-    def __copy__(self) -> Self:
-        obj = self.__class__(self.bot, self.chat, self.user, self.message)
-        obj.store = self.store.copy()
-        return obj
+    def copy(self) -> Variables:
+        variables: Variables = copy.copy(self)
+        variables.store = self.store.copy()
+        return variables
 
     def _resolve_value(self, data: Any, path: str) -> Any | None:
         try:

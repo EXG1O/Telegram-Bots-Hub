@@ -1,10 +1,9 @@
 from telegram.models import Update
 
 from service.enums import ConnectionTargetObjectType
-from service.models import Connection
+from service.models import Connection, ServiceObject
 
-from ..storage import EventStorage
-from ..variables import Variables
+from ..context import HandlerContext
 from .api_request import APIRequestHandler
 from .base import BaseHandler
 from .condition import ConditionHandler
@@ -14,7 +13,6 @@ from .message import MessageHandler
 from .trigger import TriggerHandler
 
 from collections.abc import Awaitable, Callable
-from copy import copy
 from typing import TYPE_CHECKING, Any
 import asyncio
 
@@ -28,7 +26,7 @@ class ConnectionHandler(BaseHandler[Connection]):
     def __init__(self, bot: Bot) -> None:
         super().__init__(bot)
         self.fetchers: dict[
-            ConnectionTargetObjectType, Callable[[int], Awaitable[Any]]
+            ConnectionTargetObjectType, Callable[[int], Awaitable[ServiceObject]]
         ] = {
             ConnectionTargetObjectType.TRIGGER: (
                 lambda id: self.bot.service.get_trigger(id)
@@ -61,35 +59,24 @@ class ConnectionHandler(BaseHandler[Connection]):
         }
 
     async def handle(
-        self,
-        update: Update,
-        connection: Connection,
-        event_storage: EventStorage,
-        variables: Variables,
+        self, update: Update, connection: Connection, context: HandlerContext
     ) -> None:
-        variables = copy(variables)
-        obj: Any = await self.fetchers[connection.target_object_type](
+        context = context.copy()
+        obj: ServiceObject = await self.fetchers[connection.target_object_type](
             connection.target_object_id
         )
         connections: list[Connection] | None = await self.handlers[
             connection.target_object_type
-        ].handle(update, obj, event_storage, variables)
+        ].handle(update, obj, context)
 
         if not connections:
             return
 
-        await self.handle_many(update, connections, event_storage, variables)
+        await self.handle_many(update, connections, context)
 
     async def handle_many(
-        self,
-        update: Update,
-        connections: list[Connection],
-        event_storage: EventStorage,
-        variables: Variables,
+        self, update: Update, connections: list[Connection], context: HandlerContext
     ) -> None:
         await asyncio.gather(
-            *[
-                self.handle(update, connection, event_storage, variables)
-                for connection in connections
-            ]
+            *[self.handle(update, connection, context) for connection in connections]
         )

@@ -12,9 +12,9 @@ app = FastAPI(
     ),
     license_info={
         'name': 'MIT License',
-        'url': 'https://github.com/EXG1O/Telegram-Bots-Hub/blob/master/LICENSE',
+        'url': 'https://github.com/EXG1O/Telegram-Bots-Hub/blob/v2.4.0/LICENSE',
     },
-    version='1.0.0',
+    version='2.4.0',
     debug=settings.DEBUG,
     openapi_url='/openapi.json' if settings.DEBUG else None,
     exception_handlers=EXCEPTION_HANDLERS,
