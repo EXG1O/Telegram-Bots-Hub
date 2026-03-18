@@ -2,11 +2,12 @@ from telegram.enums import ChatType
 from telegram.exceptions import InvalidTokenError
 from telegram.models import Chat, Update, User
 
-import service.models
+from service.models import BackgroundTask
+from service.models import Bot as ServiceBot
+from service.models import User as ServiceUser
 
-from .storage import EventStorage
+from .context import HandlerContext
 from .utils.validation import is_valid_user
-from .variables import Variables
 
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
@@ -33,58 +34,52 @@ class TaskManager:
 
     async def _handle_background_task(
         self,
-        bot: service.models.Bot,
-        user: service.models.User,
-        task: service.models.BackgroundTask,
+        service_bot: ServiceBot,
+        service_user: ServiceUser,
+        task: BackgroundTask,
     ) -> None:
-        if not await is_valid_user(self.bot, service_bot=bot, service_user=user):
+        if not await is_valid_user(
+            self.bot, service_bot=service_bot, service_user=service_user
+        ):
             return
 
-        user_first_name: str = user.full_name[:64]
-        user_last_name: str = user.full_name[64:]
+        user_first_name: str = service_user.full_name[:64]
+        user_last_name: str = service_user.full_name[64:]
 
-        update = Update(update_id=0)
-        update._effective_user = User(
-            id=user.telegram_id,
-            is_bot=False,
-            first_name=user_first_name,
-            last_name=user_last_name,
-        )
-        update._effective_chat = Chat(
-            id=user.telegram_id,
+        chat = Chat(
+            id=service_user.telegram_id,
             type=ChatType.PRIVATE,
             first_name=user_first_name,
             last_name=user_last_name,
         )
+        user = User(
+            id=service_user.telegram_id,
+            is_bot=False,
+            first_name=user_first_name,
+            last_name=user_last_name,
+        )
+
+        update = Update(update_id=0)
+        update._effective_chat = chat
+        update._effective_user = user
 
         await self.bot.handler.connection_handler.handle_many(
-            update,
-            task.source_connections,
-            EventStorage(
-                bot_id=self.bot.telegram_id,
-                chat_id=user.telegram_id,
-                user_id=user.telegram_id,
-            ),
-            Variables(
-                bot=self.bot, chat=update.effective_chat, user=update.effective_user
-            ),
+            update, task.source_connections, HandlerContext(self.bot, update)
         )
 
     async def _process_background_tasks(self) -> None:
         while True:
             await asyncio.sleep(3600)
 
-            tasks: list[
-                service.models.BackgroundTask
-            ] = await self.bot.service.get_background_tasks()
+            tasks: list[BackgroundTask] = await self.bot.service.get_background_tasks()
 
             if not tasks:
                 continue
 
-            bot: service.models.Bot | None = None
-            users: list[service.models.User] | None = None
+            service_bot: ServiceBot | None = None
+            service_users: list[ServiceUser] | None = None
             current_datetime: datetime = datetime.now(UTC)
-            background_tasks: dict[str, str] = await self.bot.storage.get(
+            storage_tasks: dict[str, str] = await self.bot.storage.get(
                 'background_tasks', {}
             )
 
@@ -92,7 +87,7 @@ class TaskManager:
                 try:
                     if (
                         datetime.fromisoformat(
-                            background_tasks.setdefault(
+                            storage_tasks.setdefault(
                                 str(task.id), datetime.isoformat(current_datetime)
                             )
                         )
@@ -100,25 +95,29 @@ class TaskManager:
                     ) > current_datetime:
                         continue
 
-                    if not bot:
-                        bot = await self.bot.service.get_bot()
-                    if users is None:
-                        users = await self.bot.service.get_users()
+                    if service_users is None:
+                        service_users = await self.bot.service.get_users()
+
+                    if not service_users:
+                        break
+
+                    if service_bot is None:
+                        service_bot = await self.bot.service.get_bot()
 
                     await asyncio.gather(
                         *[
-                            self._handle_background_task(bot, user, task)
-                            for user in users
+                            self._handle_background_task(
+                                service_bot, service_user, task
+                            )
+                            for service_user in service_users
                         ]
                     )
 
-                    background_tasks[str(task.id)] = datetime.isoformat(
-                        current_datetime
-                    )
+                    storage_tasks[str(task.id)] = datetime.isoformat(current_datetime)
                 except Exception:
                     pass  # FIXME: In the future, error logging will be added here.
 
-            await self.bot.storage.set('background_tasks', background_tasks)
+            await self.bot.storage.set('background_tasks', storage_tasks)
 
     async def start(self) -> None:
         self.tasks.add(asyncio.create_task(self._monitor_token()))

@@ -13,6 +13,8 @@ from aiohttp.typedefs import LooseHeaders
 from yarl import URL
 import msgspec
 
+from core.msgspec import json_encoder
+
 from .constants import PARSE_MODE
 from .enums import UpdateType
 from .models import (
@@ -73,7 +75,7 @@ class TelegramClient:
     ) -> T:
         async with self.session.post(
             self.url / endpoint,
-            data=data and msgspec.json.encode(prepare_request_data(data)),
+            data=data and json_encoder.encode(prepare_request_data(data)),
         ) as response:
             body: bytes = await response.read()
 

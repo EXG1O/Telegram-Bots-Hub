@@ -6,16 +6,17 @@ from telegram.types import KeyboardMarkup
 from service.models import Connection
 from service.models import Message as ServiceMessage
 
-from ...storage import EventStorage, Storage
+from ...context import HandlerContext
+from ...storage import Storage
 from ...utils.html import process_html_text
 from ...utils.variables import replace_text_variables
 from ...variables import Variables
 from ..base import BaseHandler
-from .data import Media, MediaType, MediaValue
+from .types import Media
 from .utils import build_keyboard, prepare_media
 
 from collections.abc import Awaitable, Callable
-from typing import Any, cast
+from typing import Any
 import asyncio
 import html
 
@@ -47,13 +48,10 @@ class MessageHandler(BaseHandler[ServiceMessage]):
         }
 
         new_bot_messages: list[Message] = []
-        processed_types: set[MediaType] = set()
+        processed_types: set[InputMediaType] = set()
         extras_attached: bool = False
 
         for type, files in media.items():
-            type = cast(MediaType, type)
-            files = cast(MediaValue, files)
-
             if not files:
                 continue
 
@@ -61,7 +59,7 @@ class MessageHandler(BaseHandler[ServiceMessage]):
 
             if len(files) < MediaGroupLimit.MIN_MEDIA_LENGTH:
                 should_attach_extras: bool = bool(text) and not any(
-                    len(media[other_type]) > 0  # type: ignore [literal-required]
+                    len(media[other_type]) > 0
                     for other_type in media
                     if other_type not in processed_types
                 )
@@ -107,21 +105,19 @@ class MessageHandler(BaseHandler[ServiceMessage]):
         chat_storage: Storage,
         variables: Variables,
     ) -> None:
-        reply_parameters = (
+        reply_parameters: ReplyParameters | None = (
             ReplyParameters(message_id=event_message_id)
             if message.settings.reply_to_user_message and event_message_id
             else None
         )
-        media = Media(
-            photo=prepare_media(
+        media: Media = {
+            InputMediaType.PHOTO: prepare_media(
                 type=InputMediaType.PHOTO, message_media=message.images
             ),
-            document=prepare_media(
+            InputMediaType.DOCUMENT: prepare_media(
                 type=InputMediaType.DOCUMENT, message_media=message.documents
             ),
-            video=[],
-            audio=[],
-        )
+        }
         text: str | None = (
             process_html_text(
                 await replace_text_variables(
@@ -163,15 +159,11 @@ class MessageHandler(BaseHandler[ServiceMessage]):
         )
 
     async def handle(
-        self,
-        update: Update,
-        message: ServiceMessage,
-        event_storage: EventStorage,
-        variables: Variables,
+        self, update: Update, message: ServiceMessage, context: HandlerContext
     ) -> list[Connection] | None:
         chat: Chat | None = update.effective_chat
         user: User | None = update.effective_user
-        chat_storage: Storage | None = event_storage.chat
+        chat_storage: Storage | None = context.chat_storage
 
         if not chat or not user or not chat_storage:
             return None
@@ -183,7 +175,7 @@ class MessageHandler(BaseHandler[ServiceMessage]):
 
         tasks: list[Awaitable[Any]] = [
             self._process_message(
-                chat, event_message_id, message, chat_storage, variables
+                chat, event_message_id, message, chat_storage, context.variables
             )
         ]
 

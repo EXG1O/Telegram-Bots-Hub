@@ -1,7 +1,11 @@
+import msgspec
+
+from core.msgspec import json_encoder
 from core.redis import redis
 
 from typing import Any, overload
-import json
+
+storage_decoder = msgspec.json.Decoder(dict[str, Any])
 
 
 class Storage:
@@ -18,13 +22,8 @@ class Storage:
         self.redis_key = ':'.join(key_parts)
 
     async def get_data(self) -> dict[str, Any]:
-        raw_data: str | None = await redis.get(self.redis_key)
-        data: Any = json.loads(raw_data) if raw_data else {}
-
-        if not isinstance(data, dict):
-            raise TypeError("The entry in 'redis' must be of type 'dict'.")
-
-        return data
+        data: bytes | None = await redis.get(self.redis_key)
+        return storage_decoder.decode(data) if data else {}
 
     @overload
     async def get(self, key: str, default_value: None = None) -> Any | None: ...
@@ -40,25 +39,15 @@ class Storage:
     async def pop(self, key: str, default_value: Any | None = None) -> Any | None:
         data: dict[str, Any] = await self.get_data()
         value: Any | None = data.pop(key, default_value)
-        await redis.set(self.redis_key, json.dumps(data))
+        await redis.set(self.redis_key, json_encoder.encode(data))
         return value
 
     async def set(self, key: str, value: Any) -> None:
         data: dict[str, Any] = await self.get_data()
         data[key] = value
-        await redis.set(self.redis_key, json.dumps(data))
+        await redis.set(self.redis_key, json_encoder.encode(data))
 
     async def delete(self, key: str) -> None:
         data: dict[str, Any] = await self.get_data()
         del data[key]
-        await redis.set(self.redis_key, json.dumps(data))
-
-
-class EventStorage:
-    def __init__(self, bot_id: int, chat_id: int | None, user_id: int | None) -> None:
-        self.chat = Storage(bot_id=bot_id, chat_id=chat_id) if chat_id else None
-        self.user = (
-            Storage(bot_id=bot_id, chat_id=chat_id, user_id=user_id)
-            if chat_id and user_id
-            else None
-        )
+        await redis.set(self.redis_key, json_encoder.encode(data))

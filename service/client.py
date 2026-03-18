@@ -3,6 +3,7 @@ from aiohttp.typedefs import LooseHeaders
 from yarl import URL
 import msgspec
 
+from core.msgspec import json_encoder
 from core.settings import SERVICE_TOKEN, SERVICE_UNIX_SOCK, SERVICE_URL
 
 from .models import (
@@ -102,7 +103,7 @@ class ServiceClient:
         async with self.session.request(
             method=method,
             url=self.root_url / endpoint,
-            data=data and msgspec.json.encode(data),
+            data=data and json_encoder.encode(data),
             params=params,
         ) as response:
             body: bytes = await response.read()
