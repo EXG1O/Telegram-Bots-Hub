@@ -168,6 +168,13 @@ class Invoice(ServiceObject):
     source_connections: list[Connection]
 
 
+class TemporaryVariable(ServiceObject):
+    id: int
+    name: str
+    value: str
+    source_connections: list[Connection]
+
+
 class Variable(ServiceObject):
     id: int
     name: str
