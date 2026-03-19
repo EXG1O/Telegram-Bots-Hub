@@ -1,6 +1,6 @@
 from telegram.constants import MediaGroupLimit
 from telegram.enums import InputMediaType
-from telegram.models import Chat, Message, ReplyParameters, Update, User
+from telegram.models import Chat, Message, ReplyParameters, Update
 from telegram.types import KeyboardMarkup
 
 from service.models import Connection
@@ -100,14 +100,14 @@ class MessageHandler(BaseHandler[ServiceMessage]):
     async def _process_message(
         self,
         chat: Chat,
-        event_message_id: int | None,
+        reply_to_event_message_id: int | None,
         message: ServiceMessage,
         chat_storage: Storage,
         variables: Variables,
     ) -> None:
         reply_parameters: ReplyParameters | None = (
-            ReplyParameters(message_id=event_message_id)
-            if message.settings.reply_to_user_message and event_message_id
+            ReplyParameters(message_id=reply_to_event_message_id)
+            if message.settings.reply_to_user_message and reply_to_event_message_id
             else None
         )
         media: Media = {
@@ -162,20 +162,28 @@ class MessageHandler(BaseHandler[ServiceMessage]):
         self, update: Update, message: ServiceMessage, context: HandlerContext
     ) -> list[Connection] | None:
         chat: Chat | None = update.effective_chat
-        user: User | None = update.effective_user
         chat_storage: Storage | None = context.chat_storage
 
-        if not chat or not user or not chat_storage:
+        if not (chat and chat_storage):
             return None
 
-        event_message: Message | None = update.effective_message
-        event_message_id: int | None = (
-            event_message.message_id if event_message else None
+        reply_to_event_message_id: int | None = (
+            event_message.message_id
+            if (
+                (event_message := update.effective_message)
+                and (event_message_user := event_message and event_message.user)
+                and event_message_user.id != self.bot.telegram_id
+            )
+            else None
         )
 
         tasks: list[Awaitable[Any]] = [
             self._process_message(
-                chat, event_message_id, message, chat_storage, context.variables
+                chat,
+                reply_to_event_message_id,
+                message,
+                chat_storage,
+                context.variables,
             )
         ]
 
@@ -184,11 +192,7 @@ class MessageHandler(BaseHandler[ServiceMessage]):
 
         await asyncio.gather(*tasks)
 
-        if (
-            message.settings.delete_user_message
-            and event_message_id
-            and not user.is_bot
-        ):
-            await self.bot.telegram.delete_message(chat.id, event_message_id)
+        if message.settings.delete_user_message and reply_to_event_message_id:
+            await self.bot.telegram.delete_message(chat.id, reply_to_event_message_id)
 
         return message.source_connections
