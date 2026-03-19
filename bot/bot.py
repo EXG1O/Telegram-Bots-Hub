@@ -65,9 +65,9 @@ class Bot:
             await task
             elapsed_time: float = time.perf_counter() - start_time
             logger.debug(
-                'Processing of update (id=%s) completed in %s.f3 ms.',
+                'Processing of update (id=%s) completed in %s ms.',
                 update.update_id,
-                elapsed_time * 1000,
+                round(elapsed_time * 1000, 3),
             )
         else:
             await task
