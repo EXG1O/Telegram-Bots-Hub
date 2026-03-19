@@ -1,4 +1,4 @@
-from telegram.models import CallbackQuery, Message, Update
+from telegram.models import Message, Update
 
 from service.models import Connection, MessageKeyboardButton, Trigger
 
@@ -34,14 +34,16 @@ class Handler:
     async def _get_wait_trigger_connections(
         self, update: Update, context: HandlerContext
     ) -> list[Connection] | None:
+        message: Message | None = update.message
         user_storage: Storage | None = context.user_storage
 
-        if not user_storage:
-            return None
-
-        message: Message | None = update.effective_message
-
-        if not message or not message.text:
+        if not (
+            message
+            and (user := message.user)
+            and user.id != self.bot.telegram_id
+            and message.text
+            and user_storage
+        ):
             return None
 
         trigger_id: int | None = await user_storage.get('expected_trigger_id')
@@ -50,32 +52,30 @@ class Handler:
             return None
 
         trigger: Trigger = await self.bot.service.get_trigger(id=trigger_id)
-        connections: list[Connection] = []
 
-        if trigger.command and message.text.startswith('/') and len(message.text) > 1:
+        if TYPE_CHECKING:
+            connections: list[Connection]
+
+        if (
+            (trigger_command := trigger.command)
+            and message.text.startswith('/')
+            and len(message.text) > 1
+        ):
             command, _, payload = message.text.removeprefix('/').partition(' ')
 
-            if (
-                trigger.command.payload and payload != trigger.command.payload
-            ) or command != trigger.command.command:
+            if not (
+                command == trigger_command.command
+                and (not trigger_command.payload or payload == trigger_command.payload)
+            ):
                 return None
 
             connections = trigger.source_connections
-        elif (
-            (
-                trigger.message
-                and trigger.message.text
-                and (
-                    message.text
-                    == (
-                        await replace_text_variables(
-                            trigger.message.text, context.variables
-                        )
-                    )
-                )
+        elif (trigger_message := trigger.message) and (
+            not trigger_message.text
+            or (
+                message.text
+                == await replace_text_variables(trigger_message.text, context.variables)
             )
-            or trigger.message
-            and not trigger.message.text
         ):
             connections = trigger.source_connections
         else:
@@ -136,9 +136,14 @@ class Handler:
     async def _get_trigger_connections(
         self, update: Update, context: HandlerContext
     ) -> list[Connection] | None:
-        message: Message | None = update.effective_message
+        message: Message | None = update.message
 
-        if not message or not message.text:
+        if not (
+            message
+            and (user := message.user)
+            and user.id != self.bot.telegram_id
+            and message.text
+        ):
             return None
 
         return list(
@@ -159,18 +164,19 @@ class Handler:
     async def _get_command_keyboard_button_connections(
         self, update: Update, context: HandlerContext
     ) -> list[Connection] | None:
-        event_message: Message | None = update.effective_message
-        callback_query: CallbackQuery | None = update.callback_query
-
         buttons: list[MessageKeyboardButton] = []
 
-        if callback_query and callback_query.data and callback_query.data.isdigit():
+        if (
+            (callback_query := update.callback_query)
+            and callback_query.data
+            and callback_query.data.isdigit()
+        ):
             buttons = await self.bot.service.get_messages_keyboard_buttons(
                 id=int(callback_query.data)
             )
-        elif event_message and event_message.text:
+        elif (message := update.message) and message.text:
             buttons = await self.bot.service.get_messages_keyboard_buttons(
-                text=event_message.text
+                text=message.text
             )
         else:
             return None
