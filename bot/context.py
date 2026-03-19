@@ -30,7 +30,7 @@ class HandlerContext:
             bot=bot,
             chat=chat,
             user=user,
-            message=update.effective_message,
+            message=update.message,
             user_storage=self.user_storage,
         )
 
