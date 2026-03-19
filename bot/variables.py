@@ -2,6 +2,7 @@ from telegram.models import Chat, Message, User
 
 from service.models import DatabaseRecord, Variable
 
+from .storage import Storage
 from .utils.html import process_html_text
 
 from typing import TYPE_CHECKING, Any
@@ -24,8 +25,11 @@ class Variables:
         chat: Chat | None = None,
         user: User | None = None,
         message: Message | None = None,
+        user_storage: Storage | None = None,
     ):
         self.bot = bot
+        self._user_storage = user_storage
+
         self.store: dict[str, Any] = {}
         self.system_store: dict[str, Any] = {
             'BOT_ID': bot.me.id,
@@ -145,6 +149,12 @@ class Variables:
                 return self.system_store.get(nested_key)
             elif prefix == 'USER':
                 return await self._resolve_user_value(nested_key)
+            elif (
+                prefix == 'TEMPORARY'
+                and self._user_storage
+                and (variables := await self._user_storage.get('temporary_variables'))
+            ):
+                return self._resolve_value(variables, nested_key)
             elif prefix == 'DATABASE':
                 return await self._resolve_database_value(nested_key)
             elif (value := self.store.get(prefix)) and isinstance(

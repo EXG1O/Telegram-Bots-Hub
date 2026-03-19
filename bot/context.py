@@ -27,7 +27,11 @@ class HandlerContext:
             else None
         )
         self.variables = Variables(
-            bot=bot, chat=chat, user=user, message=update.effective_message
+            bot=bot,
+            chat=chat,
+            user=user,
+            message=update.effective_message,
+            user_storage=self.user_storage,
         )
 
     def copy(self) -> HandlerContext:
