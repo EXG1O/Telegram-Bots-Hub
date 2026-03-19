@@ -118,9 +118,9 @@ class Message(TelegramObject):
 
 class CallbackQuery(TelegramObject):
     id: str
-    data: str
     user: User | None = msgspec.field(name='from', default=None)
     message: Message | None = None
+    data: str | None = None
 
 
 class PreCheckoutQuery(TelegramObject):
