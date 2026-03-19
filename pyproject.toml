@@ -1,6 +1,6 @@
 [project]
 name = "telegram-bots-hub"
-version = "2.4.0"
+version = "2.5.0"
 requires-python = ">=3.14,<3.15"
 dependencies = [
     "fastapi>=0.129,<0.130",

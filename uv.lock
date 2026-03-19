@@ -522,7 +522,7 @@ wheels = [
 
 [[package]]
 name = "telegram-bots-hub"
-version = "2.4.0"
+version = "2.5.0"
 source = { virtual = "." }
 dependencies = [
     { name = "aiohttp" },
