@@ -258,7 +258,7 @@ class TelegramClient:
 
     async def delete_message(self, chat_id: int, message_id: int) -> bool:
         return await self._request(
-            'deleteMessages',
+            'deleteMessage',
             data={'chat_id': chat_id, 'message_id': message_id},
             decoder=delete_messages_decoder,
         )
