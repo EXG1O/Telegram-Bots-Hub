@@ -8,6 +8,7 @@ from service.models import Message as ServiceMessage
 
 from ...context import HandlerContext
 from ...storage import Storage
+from ...storage.models import ChatStorageData
 from ...utils.html import process_html_text
 from ...utils.variables import replace_text_variables
 from ...variables import Variables
@@ -23,11 +24,11 @@ import html
 
 class MessageHandler(BaseHandler[ServiceMessage]):
     async def _delete_last_bot_messages(
-        self, chat: Chat, chat_storage: Storage
+        self, chat: Chat, chat_storage: Storage[ChatStorageData]
     ) -> None:
-        last_bot_message_ids: list[int] | None = await chat_storage.pop(
-            'last_bot_message_ids'
-        )
+        async with chat_storage.transaction() as storage_data:
+            last_bot_message_ids: list[int] = storage_data.last_bot_message_ids.copy()
+            storage_data.last_bot_message_ids.clear()
 
         if not last_bot_message_ids:
             return
@@ -102,7 +103,7 @@ class MessageHandler(BaseHandler[ServiceMessage]):
         chat: Chat,
         reply_to_event_message_id: int | None,
         message: ServiceMessage,
-        chat_storage: Storage,
+        chat_storage: Storage[ChatStorageData],
         variables: Variables,
     ) -> None:
         reply_parameters: ReplyParameters | None = (
@@ -153,16 +154,16 @@ class MessageHandler(BaseHandler[ServiceMessage]):
                 )
             )
 
-        await chat_storage.set(
-            'last_bot_message_ids',
-            [last_bot_message.message_id for last_bot_message in last_bot_messages],
-        )
+        async with chat_storage.transaction() as storage_data:
+            storage_data.last_bot_message_ids = [
+                last_bot_message.message_id for last_bot_message in last_bot_messages
+            ]
 
     async def handle(
         self, update: Update, message: ServiceMessage, context: HandlerContext
     ) -> list[Connection] | None:
         chat: Chat | None = update.effective_chat
-        chat_storage: Storage | None = context.chat_storage
+        chat_storage: Storage[ChatStorageData] | None = context.chat_storage
 
         if not (chat and chat_storage):
             return None

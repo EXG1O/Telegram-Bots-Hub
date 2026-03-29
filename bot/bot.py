@@ -35,7 +35,7 @@ class Bot:
         self.telegram = TelegramClient(bot_token=token)
         self.service_id = service_id
         self.service = ServiceClient(service_id)
-        self.storage = Storage(bot_id=self.telegram_id)
+        self.storage = Storage.for_bot(bot_id=self.telegram_id)
         self.handler = Handler(self)
         self.task_manager = TaskManager(self)
 
