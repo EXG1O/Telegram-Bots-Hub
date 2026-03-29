@@ -124,15 +124,16 @@ class TaskManager:
                     for result, service_user in zip(
                         results, service_users, strict=False
                     ):
-                        logger.debug(
-                            (
-                                'Failed handling of background task (id=%s) '
-                                'for user (service_id=%s).'
-                            ),
-                            task.id,
-                            service_user.id,
-                            exc_info=result,
-                        )
+                        if isinstance(result, BaseException):
+                            logger.debug(
+                                (
+                                    'Failed handling of background task (id=%s) '
+                                    'for user (service_id=%s).'
+                                ),
+                                task.id,
+                                service_user.id,
+                                exc_info=result,
+                            )
 
                 completed_tasks[task.id] = current_datetime
 
