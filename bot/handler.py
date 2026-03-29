@@ -5,6 +5,7 @@ from service.models import Connection, MessageKeyboardButton, Trigger
 from .context import HandlerContext
 from .handlers.connection import ConnectionHandler
 from .storage import Storage
+from .storage.models import UserStorageData
 from .utils.variables import replace_text_variables
 from .variables import Variables
 
@@ -35,7 +36,7 @@ class Handler:
         self, update: Update, context: HandlerContext
     ) -> list[Connection] | None:
         message: Message | None = update.message
-        user_storage: Storage | None = context.user_storage
+        user_storage: Storage[UserStorageData] | None = context.user_storage
 
         if not (
             message
@@ -46,12 +47,13 @@ class Handler:
         ):
             return None
 
-        trigger_id: int | None = await user_storage.get('expected_trigger_id')
+        storage_data: UserStorageData = await user_storage.get_data()
+        expected_trigger_id: int | None = storage_data.expected_trigger_id
 
-        if not trigger_id:
+        if not expected_trigger_id:
             return None
 
-        trigger: Trigger = await self.bot.service.get_trigger(id=trigger_id)
+        trigger: Trigger = await self.bot.service.get_trigger(id=expected_trigger_id)
 
         if TYPE_CHECKING:
             connections: list[Connection]
@@ -81,7 +83,8 @@ class Handler:
         else:
             return None
 
-        await user_storage.delete('expected_trigger_id')
+        async with user_storage.transaction() as storage_data:
+            storage_data.expected_trigger_id = None
 
         return connections
 

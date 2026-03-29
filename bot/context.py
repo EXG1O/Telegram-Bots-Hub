@@ -3,6 +3,7 @@ from telegram.models import Chat, Update, User
 from bot.variables import Variables
 
 from .storage import Storage
+from .storage.models import ChatStorageData, UserStorageData
 
 from typing import TYPE_CHECKING, Any
 import copy
@@ -18,11 +19,11 @@ class HandlerContext:
         chat: Chat | None = update.effective_chat
         user: User | None = update.effective_user
 
-        self.chat_storage: Storage | None = (
-            Storage(bot_id=bot.telegram_id, chat_id=chat.id) if chat else None
+        self.chat_storage: Storage[ChatStorageData] | None = (
+            Storage.for_chat(bot_id=bot.telegram_id, chat_id=chat.id) if chat else None
         )
-        self.user_storage: Storage | None = (
-            Storage(bot_id=bot.telegram_id, chat_id=chat.id, user_id=user.id)
+        self.user_storage: Storage[UserStorageData] | None = (
+            Storage.for_user(bot_id=bot.telegram_id, chat_id=chat.id, user_id=user.id)
             if chat and user
             else None
         )

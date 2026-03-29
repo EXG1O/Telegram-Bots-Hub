@@ -7,6 +7,7 @@ from service.models import Bot as ServiceBot
 from service.models import User as ServiceUser
 
 from .context import HandlerContext
+from .storage.models import BotStorageData
 from .utils.validation import is_valid_user
 
 from datetime import UTC, datetime, timedelta
@@ -81,20 +82,25 @@ class TaskManager:
 
             service_bot: ServiceBot | None = None
             service_users: list[ServiceUser] | None = None
-            current_datetime: datetime = datetime.now(UTC)
-            storage_tasks: dict[str, str] = await self.bot.storage.get(
-                'background_tasks', {}
+
+            storage_data: BotStorageData = await self.bot.storage.get_data()
+            last_completed_tasks: dict[int, datetime] = (
+                storage_data.completed_background_tasks
             )
 
+            completed_tasks: dict[int, datetime] = {}
+            current_datetime: datetime = datetime.now(UTC)
+
             for task in tasks:
-                if (
-                    datetime.fromisoformat(
-                        storage_tasks.setdefault(
-                            str(task.id), datetime.isoformat(current_datetime)
-                        )
+                if not (
+                    last_completed_task_datetime := last_completed_tasks.get(task.id)
+                ) or (
+                    (last_completed_task_datetime + timedelta(days=task.interval.value))
+                    > current_datetime
+                ):
+                    completed_tasks[task.id] = (
+                        last_completed_task_datetime or current_datetime
                     )
-                    + timedelta(days=task.interval.value)
-                ) > current_datetime:
                     continue
 
                 if service_users is None:
@@ -128,9 +134,10 @@ class TaskManager:
                             exc_info=result,
                         )
 
-                storage_tasks[str(task.id)] = datetime.isoformat(current_datetime)
+                completed_tasks[task.id] = current_datetime
 
-            await self.bot.storage.set('background_tasks', storage_tasks)
+            async with self.bot.storage.transaction() as storage_data:
+                storage_data.completed_background_tasks = completed_tasks
 
     async def start(self) -> None:
         self.tasks.add(asyncio.create_task(self._monitor_token()))
