@@ -29,7 +29,7 @@ class Handler:
         ] = [
             self._get_wait_trigger_connections,
             self._get_trigger_connections,
-            self._get_command_keyboard_button_connections,
+            self._get_message_keyboard_button_connections,
         ]
 
     async def _get_wait_trigger_connections(
@@ -89,7 +89,11 @@ class Handler:
         return connections
 
     async def _get_command_triggers(self, message_text: str) -> list[Trigger] | None:
-        if not message_text.startswith('/') or len(message_text) == 1:
+        if (
+            not message_text.startswith('/')
+            or len(message_text) == 1
+            or len(message_text) > 32
+        ):
             return None
 
         command, _, payload = message_text.removeprefix('/').partition(' ')
@@ -164,7 +168,7 @@ class Handler:
             )
         )
 
-    async def _get_command_keyboard_button_connections(
+    async def _get_message_keyboard_button_connections(
         self, update: Update, context: HandlerContext
     ) -> list[Connection] | None:
         buttons: list[MessageKeyboardButton] = []
@@ -177,9 +181,13 @@ class Handler:
             buttons = await self.bot.service.get_messages_keyboard_buttons(
                 id=int(callback_query.data)
             )
-        elif (message := update.message) and message.text:
+        elif (
+            (message := update.message)
+            and (message_text := message.text)
+            and len(message_text) <= 512
+        ):
             buttons = await self.bot.service.get_messages_keyboard_buttons(
-                text=message.text
+                text=message_text
             )
         else:
             return None
