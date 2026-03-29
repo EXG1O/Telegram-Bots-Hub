@@ -2,7 +2,7 @@ from telegram.client import TelegramClient
 from telegram.enums import UpdateType
 from telegram.models import BotCommand, Update, User
 
-from core.settings import SELF_URL, TELEGRAM_TOKEN
+from core.settings import DEBUG, SELF_URL, TELEGRAM_TOKEN
 from core.storage import bots
 from service.client import ServiceClient
 from service.models import Trigger
@@ -54,7 +54,7 @@ class Bot:
 
         task: Awaitable[None] = self.handler.handle_update(update)
 
-        if logger.isEnabledFor(logging.DEBUG):
+        if DEBUG:
             start_time: float = time.perf_counter()
             await task
             elapsed_time: float = time.perf_counter() - start_time

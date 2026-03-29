@@ -18,6 +18,9 @@ os.makedirs(LOGS_DIR, exist_ok=True)
 
 DEBUG: Final[bool] = os.getenv('DEBUG', 'True') == 'True'
 
+BOT_MONITOR_TOKEN_INTERVAL: Final[int] = 60 if DEBUG else 86400
+BOT_BACKGROUND_TASKS_INTERVAL: Final[int] = 60 if DEBUG else 3600
+
 REDIS_URL: Final[str] = os.environ['REDIS_URL']
 
 SELF_URL: Final[URL] = URL(os.environ['SELF_URL'])
