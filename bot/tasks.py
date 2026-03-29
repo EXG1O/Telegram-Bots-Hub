@@ -2,6 +2,11 @@ from telegram.enums import ChatType
 from telegram.exceptions import InvalidTokenError
 from telegram.models import Chat, Update, User
 
+from core.settings import (
+    BOT_BACKGROUND_TASKS_INTERVAL,
+    BOT_MONITOR_TOKEN_INTERVAL,
+    DEBUG,
+)
 from service.models import BackgroundTask
 from service.models import Bot as ServiceBot
 from service.models import User as ServiceUser
@@ -31,7 +36,7 @@ class TaskManager:
     async def _monitor_token(self) -> None:
         try:
             while True:
-                await asyncio.sleep(86400)
+                await asyncio.sleep(BOT_MONITOR_TOKEN_INTERVAL)
                 await self.bot.telegram.get_me()
         except InvalidTokenError:
             await self.bot.stop()
@@ -73,7 +78,7 @@ class TaskManager:
 
     async def _process_background_tasks(self) -> None:
         while True:
-            await asyncio.sleep(3600)
+            await asyncio.sleep(BOT_BACKGROUND_TASKS_INTERVAL)
 
             tasks: list[BackgroundTask] = await self.bot.service.get_background_tasks()
 
@@ -95,7 +100,14 @@ class TaskManager:
                 if not (
                     last_completed_task_datetime := last_completed_tasks.get(task.id)
                 ) or (
-                    (last_completed_task_datetime + timedelta(days=task.interval.value))
+                    (
+                        last_completed_task_datetime
+                        + (
+                            timedelta(seconds=1)
+                            if DEBUG
+                            else timedelta(days=task.interval.value)
+                        )
+                    )
                     > current_datetime
                 ):
                     completed_tasks[task.id] = (
@@ -120,12 +132,12 @@ class TaskManager:
                     return_exceptions=True,
                 )
 
-                if logger.isEnabledFor(logging.DEBUG):
+                if DEBUG:
                     for result, service_user in zip(
                         results, service_users, strict=False
                     ):
                         if isinstance(result, BaseException):
-                            logger.debug(
+                            logger.error(
                                 (
                                     'Failed handling of background task (id=%s) '
                                     'for user (service_id=%s).'

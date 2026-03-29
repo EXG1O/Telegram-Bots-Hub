@@ -1,5 +1,6 @@
 from telegram.models import Update
 
+from core.settings import DEBUG
 from service.enums import ConnectionTargetObjectType
 from service.models import Connection, ServiceObject
 
@@ -92,10 +93,10 @@ class ConnectionHandler(BaseHandler[Connection]):
             return_exceptions=True,
         )
 
-        if logger.isEnabledFor(logging.DEBUG):
+        if DEBUG:
             for result, connection in zip(results, connections, strict=False):
                 if isinstance(result, BaseException):
-                    logger.debug(
+                    logger.error(
                         'Failed handling of connection (id=%s).',
                         connection.id,
                         exc_info=result,
