@@ -184,7 +184,11 @@ class Variable(ServiceObject):
 class User(ServiceObject):
     id: int
     telegram_id: int
-    full_name: str
+    username: str | None
+    first_name: str
+    last_name: str | None
+    is_bot: bool
+    is_premium: bool
     is_allowed: bool
     is_blocked: bool
 

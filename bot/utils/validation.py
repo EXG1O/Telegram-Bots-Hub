@@ -41,7 +41,14 @@ async def is_valid_user(
             )
 
         get_service_user = bot.service.create_user(
-            CreateUser(telegram_id=user.id, full_name=user.full_name)
+            CreateUser(
+                telegram_id=user.id,
+                username=user.username,
+                first_name=user.first_name,
+                last_name=user.last_name,
+                is_bot=user.is_bot,
+                is_premium=user.is_premium,
+            )
         )
 
     service_bot, service_user = await asyncio.gather(
