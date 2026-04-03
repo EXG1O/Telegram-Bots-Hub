@@ -3,7 +3,11 @@ from typing import Any, TypedDict
 
 class CreateUser(TypedDict):
     telegram_id: int
-    full_name: str
+    username: str | None
+    first_name: str
+    last_name: str | None
+    is_bot: bool
+    is_premium: bool
 
 
 class CreateDatabaseRecord(TypedDict):

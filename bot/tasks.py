@@ -52,20 +52,20 @@ class TaskManager:
         ):
             return
 
-        user_first_name: str = service_user.full_name[:64]
-        user_last_name: str = service_user.full_name[64:]
-
         chat = Chat(
             id=service_user.telegram_id,
             type=ChatType.PRIVATE,
-            first_name=user_first_name,
-            last_name=user_last_name,
+            username=service_user.username,
+            first_name=service_user.first_name,
+            last_name=service_user.last_name,
         )
         user = User(
             id=service_user.telegram_id,
-            is_bot=False,
-            first_name=user_first_name,
-            last_name=user_last_name,
+            username=service_user.username,
+            first_name=service_user.first_name,
+            last_name=service_user.last_name,
+            is_bot=service_user.is_bot,
+            is_premium=service_user.is_premium,
         )
 
         update = Update(update_id=0)
