@@ -11,7 +11,7 @@ To install, execute the following commands:
 ```bash
 git clone https://github.com/EXG1O/Telegram-Bots-Hub.git
 cd Telegram-Bots-Hub
-git checkout tags/v2.5.0
+git checkout tags/v2.5.1
 source install.sh
 ```
 
