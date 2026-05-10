@@ -178,22 +178,15 @@ class MessageHandler(BaseHandler[ServiceMessage]):
             else None
         )
 
-        tasks: list[Awaitable[Any]] = [
-            self._process_message(
-                chat,
-                reply_to_event_message_id,
-                message,
-                chat_storage,
-                context.variables,
-            )
-        ]
+        await self._process_message(
+            chat, reply_to_event_message_id, message, chat_storage, context.variables
+        )
 
         if not message.settings.send_as_new_message:
-            tasks.append(self._delete_last_bot_messages(chat, chat_storage))
-
-        await asyncio.gather(*tasks)
-
+            asyncio.create_task(self._delete_last_bot_messages(chat, chat_storage))
         if message.settings.delete_user_message and reply_to_event_message_id:
-            await self.bot.telegram.delete_message(chat.id, reply_to_event_message_id)
+            asyncio.create_task(
+                self.bot.telegram.delete_message(chat.id, reply_to_event_message_id)
+            )
 
         return message.source_connections
