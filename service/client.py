@@ -77,8 +77,8 @@ class ServiceClient:
 
     def __init__(self, bot_service_id: int) -> None:
         self.root_url: URL = (
-            SERVICE_URL or URL('http://localhost')
-        ) / f'api/telegram-bots-hub/telegram-bots/{bot_service_id}/'
+            SERVICE_URL / f'api/telegram-bots-hub/telegram-bots/{bot_service_id}/'
+        )
 
     @classmethod
     def get_session(cls) -> ClientSession:

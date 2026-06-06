@@ -28,14 +28,10 @@ REDIS_URL: Final[str] = os.environ['REDIS_URL']
 SELF_TOKEN: Final[str] = os.environ['SELF_TOKEN']
 TELEGRAM_TOKEN: Final[str] = os.environ['TELEGRAM_TOKEN']
 
-SERVICE_URL: Final[URL | None] = URL(url) if (url := os.getenv('SERVICE_URL')) else None
+SERVICE_URL: Final[URL] = URL(os.environ['SERVICE_URL'])
 SERVICE_UNIX_SOCK: Final[Path | None] = (
     Path(path) if (path := os.getenv('SERVICE_UNIX_SOCK')) else None
 )
-
-if not (SERVICE_URL or SERVICE_UNIX_SOCK):
-    raise ValueError('Either SERVICE_URL or SERVICE_UNIX_SOCK must be set.')
-
 SERVICE_TOKEN: Final[str] = os.environ['SERVICE_TOKEN']
 
 
