@@ -1,5 +1,18 @@
 from pydantic import BaseModel
 
 
-class StartBotRequest(BaseModel):
-    bot_token: str
+class BotStartupData(BaseModel):
+    token: str
+    webhook_url: str
+
+
+class StartBotsItemData(BotStartupData):
+    id: int
+
+
+class StartBotData(BotStartupData):
+    pass
+
+
+class RestartBotData(BotStartupData):
+    pass

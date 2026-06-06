@@ -1,8 +1,9 @@
 from telegram.client import TelegramClient
 from telegram.enums import UpdateType
+from telegram.exceptions import TelegramError
 from telegram.models import BotCommand, Update, User
 
-from core.settings import DEBUG, SELF_URL, TELEGRAM_TOKEN
+from core.settings import DEBUG, TELEGRAM_TOKEN
 from core.storage import bots
 from service.client import ServiceClient
 from service.models import Trigger
@@ -13,6 +14,7 @@ from .tasks import TaskManager
 from .utils.validation import is_valid_user
 
 from collections.abc import Awaitable
+from contextlib import suppress
 from typing import Final
 import asyncio
 import logging
@@ -29,8 +31,9 @@ COMMAND_CLEANUP_PATTERN: Final[re.Pattern[str]] = re.compile(f'[{string.punctuat
 class Bot:
     _me: User | None = None
 
-    def __init__(self, service_id: int, token: str):
+    def __init__(self, service_id: int, token: str, webhook_url: str) -> None:
         self.token = token
+        self.webhook_url = webhook_url
         self.telegram_id = int(token.split(':')[0])
         self.telegram = TelegramClient(bot_token=token)
         self.service_id = service_id
@@ -90,7 +93,7 @@ class Bot:
             self.telegram.get_me(),
             self.set_menu_commands(),
             self.telegram.set_webhook(
-                f'{SELF_URL}/bots/{self.service_id}/webhook/',
+                self.webhook_url,
                 allowed_updates=[
                     UpdateType.MESSAGE,
                     UpdateType.CALLBACK_QUERY,
@@ -100,10 +103,13 @@ class Bot:
             ),
         )
         await self.task_manager.start()
+        await self.service.assign_to_hub()
 
     async def stop(self) -> None:
         try:
-            await self.telegram.delete_webhook()
-        finally:
+            with suppress(TelegramError):
+                await self.telegram.delete_webhook()
             del bots[self.service_id]
             await self.task_manager.stop()
+        finally:
+            await self.service.unassign_from_hub()

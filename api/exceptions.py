@@ -1,4 +1,4 @@
-class NotFoundBotError(Exception):
+class BotNotFoundError(Exception):
     pass
 
 
