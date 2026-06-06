@@ -28,7 +28,7 @@ from .schemas import (
     UpdateDatabaseRecords,
 )
 
-from typing import Any, Final
+from typing import Any, Final, overload
 import logging
 
 logger = logging.getLogger(__name__)
@@ -77,8 +77,8 @@ class ServiceClient:
 
     def __init__(self, bot_service_id: int) -> None:
         self.root_url: URL = (
-            SERVICE_URL / f'api/telegram-bots-hub/telegram-bots/{bot_service_id}/'
-        )
+            SERVICE_URL or URL('http://localhost')
+        ) / f'api/telegram-bots-hub/telegram-bots/{bot_service_id}/'
 
     @classmethod
     def get_session(cls) -> ClientSession:
@@ -99,6 +99,7 @@ class ServiceClient:
     def session(self) -> ClientSession:
         return self.get_session()
 
+    @overload
     async def _request[T](
         self,
         method: str,
@@ -106,7 +107,26 @@ class ServiceClient:
         decoder: msgspec.json.Decoder[T],
         data: Any | None = None,
         params: dict[str, str] | None = None,
-    ) -> T:
+    ) -> T: ...
+
+    @overload
+    async def _request(
+        self,
+        method: str,
+        endpoint: str,
+        decoder: None = None,
+        data: Any | None = None,
+        params: dict[str, str] | None = None,
+    ) -> None: ...
+
+    async def _request[T](
+        self,
+        method: str,
+        endpoint: str,
+        decoder: msgspec.json.Decoder[T] | None = None,
+        data: Any | None = None,
+        params: dict[str, str] | None = None,
+    ) -> T | None:
         try:
             async with self.session.request(
                 method=method,
@@ -114,7 +134,11 @@ class ServiceClient:
                 data=data and json_encoder.encode(data),
                 params=params,
             ) as response:
+                if not decoder:
+                    return None
+
                 body: bytes = await response.read()
+
             return decoder.decode(body)
         except Exception as error:
             logger.exception('Failed request to the main service.')
@@ -122,6 +146,12 @@ class ServiceClient:
 
     async def get_bot(self) -> Bot:
         return await self._request(hdrs.METH_GET, '', decoder=get_bot_decoder)
+
+    async def assign_to_hub(self) -> None:
+        await self._request(hdrs.METH_POST, 'hub/assign/')
+
+    async def unassign_from_hub(self) -> None:
+        await self._request(hdrs.METH_POST, 'hub/unassign/')
 
     async def get_triggers(
         self,

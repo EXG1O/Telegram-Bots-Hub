@@ -1,6 +1,5 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Request, status
 
-from telegram.exceptions import TelegramError
 from telegram.models import Update
 
 import msgspec
@@ -8,67 +7,87 @@ import msgspec
 from bot import Bot
 from core.storage import bots
 
-from .deps import BotServiceID, verify_self_token, verify_telegram_token
+from .deps import ValidBot, verify_self_token
 from .exceptions import BotAlreadyEnabledError
-from .schemas import StartBotRequest
+from .schemas import RestartBotData, StartBotData, StartBotsItemData
 
-router = APIRouter()
-bots_router = APIRouter(prefix='/bots', dependencies=[Depends(verify_self_token)])
+import asyncio
+import logging
 
+logger = logging.getLogger(__name__)
+
+
+router = APIRouter(dependencies=[Depends(verify_self_token)])
+
+bot_start_sem = asyncio.Semaphore(10)
 
 update_decoder = msgspec.json.Decoder(Update)
 
 
-@bots_router.get('/')
+@router.get('/bots/')
 async def get_bots() -> list[int]:
     return list(bots)
 
 
-@bots_router.post('/{bot_service_id}/start/')
-async def start_bot(bot_service_id: int, request: StartBotRequest) -> None:
-    if bot_service_id in bots:
+async def _start_bot(service_id: int, token: str, webhook_url: str) -> None:
+    async with bot_start_sem:
+        bot = Bot(service_id=service_id, token=token, webhook_url=webhook_url)
+        bots[service_id] = bot
+
+        try:
+            await bot.start()
+        except Exception as error:
+            await bot.stop()
+            logger.exception('Unexpected error during start of bot %s.', service_id)
+            raise error
+
+
+@router.post('/bots/start/', status_code=status.HTTP_202_ACCEPTED)
+async def start_bots(
+    data: list[StartBotsItemData], background_tasks: BackgroundTasks
+) -> None:
+    for item in data:
+        background_tasks.add_task(_start_bot, item.id, item.token, item.webhook_url)
+
+
+@router.post('/bots/{service_id}/start/', status_code=status.HTTP_202_ACCEPTED)
+async def start_bot(
+    service_id: int, data: StartBotData, background_tasks: BackgroundTasks
+) -> None:
+    if service_id in bots:
         raise BotAlreadyEnabledError()
 
-    bot = Bot(bot_service_id, request.bot_token)
-    bots[bot_service_id] = bot
-
-    try:
-        await bot.start()
-    except TelegramError as error:
-        del bots[bot_service_id]
-        raise error
+    background_tasks.add_task(_start_bot, service_id, data.token, data.webhook_url)
 
 
-@bots_router.post('/{bot_service_id}/restart/')
-async def restart_bot(bot_service_id: BotServiceID) -> None:
-    old_bot: Bot = bots[bot_service_id]
-    await old_bot.stop()
-
-    bot = Bot(bot_service_id, old_bot.token)
-    bots[bot_service_id] = bot
-
-    try:
-        await bot.start()
-    except TelegramError as error:
-        del bots[bot_service_id]
-        raise error
+async def _restart_bot(bot: Bot, token: str, webhook_url: str) -> None:
+    await bot.stop()
+    await _start_bot(bot.service_id, token, webhook_url)
 
 
-@bots_router.post('/{bot_service_id}/stop/')
-async def stop_bot(bot_service_id: BotServiceID) -> None:
-    await bots[bot_service_id].stop()
+@router.post('/bots/{service_id}/restart/', status_code=status.HTTP_202_ACCEPTED)
+async def restart_bot(
+    service_id: int,
+    bot: ValidBot,
+    data: RestartBotData,
+    background_tasks: BackgroundTasks,
+) -> None:
+    background_tasks.add_task(_restart_bot, bot, data.token, data.webhook_url)
+
+
+@router.post('/bots/{service_id}/stop/', status_code=status.HTTP_202_ACCEPTED)
+async def stop_bot(
+    service_id: int, bot: ValidBot, background_tasks: BackgroundTasks
+) -> None:
+    background_tasks.add_task(bot.stop)
 
 
 @router.post(
-    '/bots/{bot_service_id}/webhook/', dependencies=[Depends(verify_telegram_token)]
+    '/bots/{service_id}/webhooks/telegram/', status_code=status.HTTP_202_ACCEPTED
 )
 async def bot_webhook(
-    bot_service_id: BotServiceID, request: Request, background_tasks: BackgroundTasks
+    service_id: int, bot: ValidBot, request: Request, background_tasks: BackgroundTasks
 ) -> None:
     background_tasks.add_task(
-        bots[bot_service_id].feed_webhook_update,
-        update_decoder.decode(await request.body()),
+        bot.feed_webhook_update, update_decoder.decode(await request.body())
     )
-
-
-router.include_router(bots_router)

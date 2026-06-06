@@ -3,14 +3,14 @@ from fastapi.responses import JSONResponse
 
 from telegram.exceptions import InvalidTokenError
 
-from api.exceptions import BotAlreadyEnabledError, NotFoundBotError
+from api.exceptions import BotAlreadyEnabledError, BotNotFoundError
 
 from collections.abc import Callable, Coroutine
 from typing import Any
 
 
-async def not_found_bot_exception_handler(
-    request: Request, exception: NotFoundBotError
+async def bot_not_found_exception_handler(
+    request: Request, exception: BotNotFoundError
 ) -> JSONResponse:
     return JSONResponse(
         {
@@ -48,7 +48,7 @@ async def invalid_token_exception_handler(
 EXCEPTION_HANDLERS: dict[
     int | type[Exception], Callable[[Request, Any], Coroutine[Any, Any, Response]]
 ] = {
-    NotFoundBotError: not_found_bot_exception_handler,
+    BotNotFoundError: bot_not_found_exception_handler,
     BotAlreadyEnabledError: bot_already_enabled_exception_handler,
     InvalidTokenError: invalid_token_exception_handler,
 }
