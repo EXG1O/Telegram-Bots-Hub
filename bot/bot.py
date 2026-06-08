@@ -8,9 +8,9 @@ from core.storage import bots
 from service.client import ServiceClient
 from service.models import Trigger
 
+from .background.manager import BackgroundTaskManager
 from .handler import Handler
 from .storage import Storage
-from .tasks import TaskManager
 from .utils.validation import is_valid_user
 
 from collections.abc import Awaitable
@@ -40,7 +40,7 @@ class Bot:
         self.service = ServiceClient(service_id)
         self.storage = Storage.for_bot(bot_id=self.telegram_id)
         self.handler = Handler(self)
-        self.task_manager = TaskManager(self)
+        self.background_task_manager = BackgroundTaskManager(self)
 
     @property
     def me(self) -> User:
@@ -102,7 +102,7 @@ class Bot:
                 secret_token=TELEGRAM_TOKEN,
             ),
         )
-        await self.task_manager.start()
+        await self.background_task_manager.start()
         await self.service.assign_to_hub()
 
     async def stop(self) -> None:
@@ -110,6 +110,6 @@ class Bot:
             with suppress(TelegramError):
                 await self.telegram.delete_webhook()
             del bots[self.service_id]
-            await self.task_manager.stop()
+            await self.background_task_manager.stop()
         finally:
             await self.service.unassign_from_hub()

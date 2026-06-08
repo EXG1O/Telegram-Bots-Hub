@@ -20,8 +20,8 @@ DEBUG: Final[bool] = os.getenv('DEBUG', 'True') == 'True'
 
 CONTAINER_ID: Final[str] = socket.gethostname()
 
-BOT_MONITOR_TOKEN_INTERVAL: Final[int] = 60 if DEBUG else 86400
-BOT_BACKGROUND_TASKS_INTERVAL: Final[int] = 60 if DEBUG else 3600
+BOT_BACKGROUND_MONITOR_TOKEN_INTERVAL: Final[int] = 60 if DEBUG else 86400
+BOT_BACKGROUND_PROCESS_SERVICE_TASKS_INTERVAL: Final[int] = 60 if DEBUG else 3600
 
 REDIS_URL: Final[str] = os.environ['REDIS_URL']
 
