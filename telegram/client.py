@@ -10,6 +10,7 @@ from telegram.utils import prepare_request_data
 
 from aiohttp import ClientSession, DummyCookieJar, hdrs
 from aiohttp.typedefs import LooseHeaders
+from aiolimiter import AsyncLimiter
 from yarl import URL
 import msgspec
 
@@ -60,6 +61,27 @@ class TelegramClient:
 
     def __init__(self, bot_token: str) -> None:
         self.url = URL(f'https://api.telegram.org/bot{bot_token}')
+        self._global_limiter = AsyncLimiter(max_rate=30, time_period=1)
+        self._user_limiters: dict[int, AsyncLimiter] = {}
+        self._group_limiters: dict[int, AsyncLimiter] = {}
+
+    def _get_chat_limiter(self, chat_id: int) -> AsyncLimiter:
+        if chat_id > 0:
+            return self._user_limiters.setdefault(
+                chat_id, AsyncLimiter(max_rate=1, time_period=1)
+            )
+
+        return self._group_limiters.setdefault(
+            chat_id, AsyncLimiter(max_rate=20, time_period=60)
+        )
+
+    async def _acquire_rate_limit(self, chat_id: int | None = None) -> None:
+        if chat_id is not None:
+            async with self._get_chat_limiter(chat_id), self._global_limiter:
+                return
+
+        async with self._global_limiter:
+            return
 
     @classmethod
     def get_session(cls) -> ClientSession:
@@ -77,6 +99,9 @@ class TelegramClient:
         decoder: msgspec.json.Decoder[TelegramResponse[T]],
         data: dict[str, Any] | None = None,
     ) -> T:
+        chat_id: int | None = data.get('chat_id') if data else None
+        await self._acquire_rate_limit(chat_id)
+
         try:
             async with self.session.post(
                 self.url / endpoint,
