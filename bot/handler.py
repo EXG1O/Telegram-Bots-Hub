@@ -102,6 +102,7 @@ class Handler:
             command=command,
             command_payload=payload or None,
             has_command_payload=bool(payload),
+            has_source_connections=True,
         )
 
     async def _get_message_triggers(
@@ -112,10 +113,16 @@ class Handler:
             triggers_without_message_text,
         ) = await asyncio.gather(
             self.bot.service.get_triggers(
-                has_message=True, has_message_text=True, has_target_connections=False
+                has_message=True,
+                has_message_text=True,
+                has_source_connections=True,
+                has_target_connections=False,
             ),
             self.bot.service.get_triggers(
-                has_message=True, has_message_text=False, has_target_connections=False
+                has_message=True,
+                has_message_text=False,
+                has_source_connections=True,
+                has_target_connections=False,
             ),
         )
 
