@@ -16,6 +16,7 @@ from .models import (
     Invoice,
     Message,
     MessageKeyboardButton,
+    Pagination,
     TemporaryVariable,
     Trigger,
     User,
@@ -62,7 +63,7 @@ get_temporary_variables_decoder = msgspec.json.Decoder(list[TemporaryVariable])
 get_temporary_variable_decoder = msgspec.json.Decoder(TemporaryVariable)
 get_variables_decoder = msgspec.json.Decoder(list[Variable])
 get_variable_decoder = msgspec.json.Decoder(Variable)
-get_users_decoder = msgspec.json.Decoder(list[User])
+get_users_decoder = msgspec.json.Decoder(list[User] | Pagination[User])
 get_user_decoder = msgspec.json.Decoder(User)
 create_user_decoder = msgspec.json.Decoder(User)
 get_database_records_decoder = msgspec.json.Decoder(list[DatabaseRecord])
@@ -229,9 +230,19 @@ class ServiceClient:
             hdrs.METH_GET, f'conditions/{id}/', decoder=get_condition_decoder
         )
 
-    async def get_background_tasks(self) -> list[BackgroundTask]:
+    async def get_background_tasks(
+        self, has_source_connections: bool | None = None
+    ) -> list[BackgroundTask]:
+        params: dict[str, str] = {}
+
+        if has_source_connections is not None:
+            params['has_source_connections'] = str(has_source_connections)
+
         return await self._request(
-            hdrs.METH_GET, 'background-tasks/', decoder=get_background_tasks_decoder
+            hdrs.METH_GET,
+            'background-tasks/',
+            params=params,
+            decoder=get_background_tasks_decoder,
         )
 
     async def get_background_task(self, id: int) -> BackgroundTask:
@@ -304,8 +315,29 @@ class ServiceClient:
             hdrs.METH_GET, f'variables/{id}/', decoder=get_variable_decoder
         )
 
-    async def get_users(self) -> list[User]:
-        return await self._request(hdrs.METH_GET, 'users/', decoder=get_users_decoder)
+    @overload
+    async def get_users(
+        self, limit: None = None, offset: int | None = None
+    ) -> list[User]: ...
+
+    @overload
+    async def get_users(
+        self, limit: int, offset: int | None = None
+    ) -> Pagination[User]: ...
+
+    async def get_users(
+        self, limit: int | None = None, offset: int | None = None
+    ) -> list[User] | Pagination[User]:
+        params: dict[str, str] = {}
+
+        if limit is not None:
+            params['limit'] = str(limit)
+        if offset is not None:
+            params['offset'] = str(offset)
+
+        return await self._request(
+            hdrs.METH_GET, 'users/', params=params, decoder=get_users_decoder
+        )
 
     async def get_user(self, id: int) -> User:
         return await self._request(
