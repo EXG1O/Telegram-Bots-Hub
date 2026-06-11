@@ -4,6 +4,7 @@ from telegram.models import Chat, Update, User
 from core.settings import DEBUG
 from service.models import BackgroundTask as ServiceBackgroundTask
 from service.models import Bot as ServiceBot
+from service.models import Pagination
 from service.models import User as ServiceUser
 
 from ...context import HandlerContext
@@ -77,19 +78,17 @@ class ProcessServiceTasksTask(BackgroundTask):
     async def __call__(self) -> None:
         tasks: list[
             ServiceBackgroundTask
-        ] = await self.bot.service.get_background_tasks()
+        ] = await self.bot.service.get_background_tasks(has_source_connections=True)
 
         if not tasks:
             return
-
-        service_bot: ServiceBot | None = None
-        service_users: list[ServiceUser] | None = None
 
         storage_data: BotStorageData = await self.bot.storage.get_data()
         last_completed_tasks: dict[int, datetime] = (
             storage_data.completed_background_tasks
         )
 
+        active_tasks: list[ServiceBackgroundTask] = []
         completed_tasks: dict[int, datetime] = {}
         current_datetime: datetime = datetime.now(UTC)
 
@@ -100,25 +99,37 @@ class ProcessServiceTasksTask(BackgroundTask):
 
             if should_skip_task:
                 completed_tasks[task.id] = completed_task_datetime
-                continue
+            else:
+                active_tasks.append(task)
 
-            if service_users is None:
-                service_users = await self.bot.service.get_users()
+        if not active_tasks:
+            async with self.bot.storage.transaction() as storage_data:
+                storage_data.completed_background_tasks.update(completed_tasks)
+            return
+
+        service_bot: ServiceBot = await self.bot.service.get_bot()
+
+        limit: int = 250
+        offset: int = 0
+
+        while True:
+            pagination: Pagination[ServiceUser] = await self.bot.service.get_users(
+                limit=limit, offset=offset
+            )
+            service_users: list[ServiceUser] = pagination.results
 
             if not service_users:
                 break
 
-            if service_bot is None:
-                service_bot = await self.bot.service.get_bot()
-
-            for service_user_batch in batched(service_users, 10, strict=False):
-                results: list[BaseException | None] = await asyncio.gather(
-                    *[
-                        self._handle_task(service_bot, service_user, task)
-                        for service_user in service_user_batch
-                    ],
-                    return_exceptions=True,
-                )
+            for task in active_tasks:
+                for service_user_batch in batched(service_users, 15, strict=False):
+                    results: list[BaseException | None] = await asyncio.gather(
+                        *[
+                            self._handle_task(service_bot, service_user, task)
+                            for service_user in service_user_batch
+                        ],
+                        return_exceptions=True,
+                    )
 
                 if DEBUG:
                     for result, service_user in zip(
@@ -135,6 +146,12 @@ class ProcessServiceTasksTask(BackgroundTask):
                                 exc_info=result,
                             )
 
+            offset += limit
+
+            if pagination.count - offset <= 0:
+                break
+
+        for task in active_tasks:
             completed_tasks[task.id] = current_datetime
 
         async with self.bot.storage.transaction() as storage_data:

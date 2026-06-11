@@ -19,6 +19,11 @@ class ServiceObject(msgspec.Struct):
     pass
 
 
+class Pagination[T: ServiceObject](ServiceObject):
+    count: int
+    results: list[T]
+
+
 class Media(ServiceObject):
     name: str | None
     size: int | None
