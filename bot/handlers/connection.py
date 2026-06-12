@@ -1,6 +1,7 @@
 from telegram.models import Update
 
-from core.settings import DEBUG
+from core.enums import Mode
+from core.settings import MODE
 from service.enums import ConnectionTargetObjectType
 from service.models import Connection, ServiceObject
 
@@ -93,7 +94,7 @@ class ConnectionHandler(BaseHandler[Connection]):
             return_exceptions=True,
         )
 
-        if DEBUG:
+        if MODE == Mode.DEBUG:
             for result, connection in zip(results, connections, strict=False):
                 if isinstance(result, BaseException):
                     logger.error(
