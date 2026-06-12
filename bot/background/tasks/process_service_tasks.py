@@ -1,7 +1,8 @@
 from telegram.enums import ChatType
 from telegram.models import Chat, Update, User
 
-from core.settings import DEBUG
+from core.enums import Mode
+from core.settings import MODE
 from service.models import BackgroundTask as ServiceBackgroundTask
 from service.models import Bot as ServiceBot
 from service.models import Pagination
@@ -67,7 +68,9 @@ class ProcessServiceTasksTask(BackgroundTask):
             return True, current_datetime
 
         interval: timedelta = (
-            timedelta(seconds=1) if DEBUG else timedelta(days=task.interval.value)
+            timedelta(seconds=1)
+            if MODE == Mode.DEBUG
+            else timedelta(days=task.interval.value)
         )
 
         if last_completed_task_datetime + interval > current_datetime:
@@ -131,7 +134,7 @@ class ProcessServiceTasksTask(BackgroundTask):
                         return_exceptions=True,
                     )
 
-                if DEBUG:
+                if MODE == Mode.DEBUG:
                     for result, service_user in zip(
                         results, service_user_batch, strict=True
                     ):

@@ -1,6 +1,8 @@
 from dotenv import load_dotenv
 from yarl import URL
 
+from .enums import Mode
+
 from pathlib import Path
 from typing import Final
 import logging.config
@@ -10,18 +12,20 @@ import socket
 load_dotenv()
 
 
+CONTAINER_ID: Final[str] = socket.gethostname()
+
 BASE_DIR: Final[Path] = Path(__file__).resolve().parent.parent
-LOGS_DIR: Final[Path] = BASE_DIR / 'logs'
+LOGS_DIR: Final[Path] = BASE_DIR / 'logs' / CONTAINER_ID
 
 os.makedirs(LOGS_DIR, exist_ok=True)
 
 
-DEBUG: Final[bool] = os.getenv('DEBUG', 'True') == 'True'
+MODE: Final[Mode] = Mode(os.getenv('MODE', 'debug').lower())
 
-CONTAINER_ID: Final[str] = socket.gethostname()
-
-BOT_BACKGROUND_MONITOR_TOKEN_INTERVAL: Final[int] = 60 if DEBUG else 86400
-BOT_BACKGROUND_PROCESS_SERVICE_TASKS_INTERVAL: Final[int] = 60 if DEBUG else 3600
+BOT_BACKGROUND_MONITOR_TOKEN_INTERVAL: Final[int] = 60 if MODE == Mode.DEBUG else 86400
+BOT_BACKGROUND_PROCESS_SERVICE_TASKS_INTERVAL: Final[int] = (
+    60 if MODE == Mode.DEBUG else 3600
+)
 
 REDIS_URL: Final[str] = os.environ['REDIS_URL']
 
@@ -72,7 +76,7 @@ logging.config.dictConfig(
         },
         'root': {
             'handlers': ['console', 'info_file', 'error_file'],
-            'level': 'DEBUG' if DEBUG else 'INFO',
+            'level': 'DEBUG' if MODE == Mode.DEBUG else 'INFO',
         },
     }
 )
