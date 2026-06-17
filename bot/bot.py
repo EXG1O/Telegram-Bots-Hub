@@ -1,18 +1,21 @@
 from telegram.client import TelegramClient
 from telegram.enums import UpdateType
 from telegram.exceptions import TelegramError
-from telegram.models import BotCommand, Update, User
+from telegram.models import BotCommand, Chat, Update, User
 
 from core.enums import Mode
 from core.settings import MODE, TELEGRAM_TOKEN
 from core.storage import bots
 from service.client import ServiceClient
+from service.enums import ChatType as ServiceChatType
+from service.models import Chat as ServiceChat
 from service.models import Trigger
+from service.schemas import CreateChat, CreateUser, ExistingUser
 
 from .background.manager import BackgroundTaskManager
 from .handler import Handler
 from .storage import Storage
-from .utils.validation import is_valid_user
+from .utils.validation import is_subject_allowed
 
 from collections.abc import Awaitable
 from contextlib import suppress
@@ -49,11 +52,54 @@ class Bot:
             raise RuntimeError('Bot is not started yet.')
         return self._me
 
+    async def _is_update_allowed(self, update: Update) -> bool:
+        chat: Chat | None = update.effective_chat
+        user: User | None = update.effective_user
+
+        if not user:
+            return False
+
+        service_bot, service_user = await asyncio.gather(
+            self.service.get_bot(),
+            self.service.create_user(
+                data=CreateUser(
+                    telegram_id=user.id,
+                    username=user.username,
+                    first_name=user.first_name,
+                    last_name=user.last_name,
+                    is_bot=user.is_bot,
+                    is_premium=user.is_premium,
+                )
+            ),
+        )
+        is_allowed_user: bool = is_subject_allowed(
+            service_bot=service_bot, service_subject=service_user
+        )
+
+        if not chat:
+            return is_allowed_user
+
+        service_chat: ServiceChat = await self.service.create_chat(
+            data=CreateChat(
+                telegram_id=chat.id,
+                type=ServiceChatType(chat.type),
+                title=chat.title,
+                username=chat.username,
+                first_name=chat.first_name,
+                last_name=chat.last_name,
+                is_forum=chat.is_forum,
+                is_direct_messages=chat.is_direct_messages,
+                users=[ExistingUser(id=service_user.id)],
+            )
+        )
+        is_allowed_chat: bool = is_subject_allowed(
+            service_bot=service_bot, service_subject=service_chat
+        )
+
+        return is_allowed_chat and is_allowed_user
+
     async def feed_webhook_update(self, update: Update) -> None:
-        if not (
-            (user := update.effective_user)
-            and (user.id == self.telegram_id or await is_valid_user(self, user=user))
-        ):
+        if not await self._is_update_allowed(update):
             return
 
         task: Awaitable[None] = self.handler.handle_update(update)
@@ -70,7 +116,7 @@ class Bot:
         else:
             await task
 
-    async def set_menu_commands(self) -> None:
+    async def _set_menu_commands(self) -> None:
         triggers: list[Trigger] = await self.service.get_triggers(
             has_command=True, has_command_payload=False, has_command_description=True
         )
@@ -92,7 +138,7 @@ class Bot:
     async def start(self) -> None:
         self._me, *_ = await asyncio.gather(
             self.telegram.get_me(),
-            self.set_menu_commands(),
+            self._set_menu_commands(),
             self.telegram.set_webhook(
                 self.webhook_url,
                 allowed_updates=[

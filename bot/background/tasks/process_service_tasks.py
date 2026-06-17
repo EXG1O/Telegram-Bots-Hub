@@ -1,16 +1,16 @@
 from telegram.enums import ChatType
-from telegram.models import Chat, Update, User
+from telegram.models import Chat, Update
 
 from core.enums import Mode
 from core.settings import MODE
 from service.models import BackgroundTask as ServiceBackgroundTask
 from service.models import Bot as ServiceBot
+from service.models import Chat as ServiceChat
 from service.models import Pagination
-from service.models import User as ServiceUser
 
 from ...context import HandlerContext
 from ...storage.models import BotStorageData
-from ...utils.validation import is_valid_user
+from ...utils.validation import is_subject_allowed
 from .base import BackgroundTask
 
 from datetime import UTC, datetime, timedelta
@@ -25,29 +25,22 @@ class ProcessServiceTasksTask(BackgroundTask):
     async def _handle_task(
         self,
         service_bot: ServiceBot,
-        service_user: ServiceUser,
+        service_chat: ServiceChat,
         task: ServiceBackgroundTask,
     ) -> None:
-        if not await is_valid_user(
-            self.bot, service_bot=service_bot, service_user=service_user
-        ):
+        if not is_subject_allowed(service_bot=service_bot, service_subject=service_chat):
             return
 
         update = Update(update_id=0)
         update._effective_chat = Chat(
-            id=service_user.telegram_id,
-            type=ChatType.PRIVATE,
-            username=service_user.username,
-            first_name=service_user.first_name,
-            last_name=service_user.last_name,
-        )
-        update._effective_user = User(
-            id=service_user.telegram_id,
-            username=service_user.username,
-            first_name=service_user.first_name,
-            last_name=service_user.last_name,
-            is_bot=service_user.is_bot,
-            is_premium=service_user.is_premium,
+            id=service_chat.telegram_id,
+            type=ChatType(service_chat.type),
+            title=service_chat.title,
+            username=service_chat.username,
+            first_name=service_chat.first_name,
+            last_name=service_chat.last_name,
+            is_forum=service_chat.is_forum,
+            is_direct_messages=service_chat.is_direct_messages,
         )
 
         await self.bot.handler.connection_handler.handle_many(
@@ -116,36 +109,36 @@ class ProcessServiceTasksTask(BackgroundTask):
         offset: int = 0
 
         while True:
-            pagination: Pagination[ServiceUser] = await self.bot.service.get_users(
+            pagination: Pagination[ServiceChat] = await self.bot.service.get_chats(
                 limit=limit, offset=offset
             )
-            service_users: list[ServiceUser] = pagination.results
+            service_chats: list[ServiceChat] = pagination.results
 
-            if not service_users:
+            if not service_chats:
                 break
 
             for task in active_tasks:
-                for service_user_batch in batched(service_users, 15, strict=False):
+                for service_chat_batch in batched(service_chats, 15, strict=False):
                     results: list[BaseException | None] = await asyncio.gather(
                         *[
-                            self._handle_task(service_bot, service_user, task)
-                            for service_user in service_user_batch
+                            self._handle_task(service_bot, service_chat, task)
+                            for service_chat in service_chat_batch
                         ],
                         return_exceptions=True,
                     )
 
                 if MODE == Mode.DEBUG:
-                    for result, service_user in zip(
-                        results, service_user_batch, strict=True
+                    for result, service_chat in zip(
+                        results, service_chat_batch, strict=True
                     ):
                         if isinstance(result, BaseException):
                             logger.error(
                                 (
-                                    'Failed handling of background task (id=%s) '
-                                    'for user (service_id=%s).'
+                                    'Failed handling of background task (service_id=%s) '
+                                    'for chat (service_id=%s).'
                                 ),
                                 task.id,
-                                service_user.id,
+                                service_chat.id,
                                 exc_info=result,
                             )
 
