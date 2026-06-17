@@ -69,3 +69,10 @@ class BackgroundTaskInterval(IntEnum):
     DAY_7 = 7
     DAY_14 = 14
     DAY_28 = 28
+
+
+class ChatType(StrEnum):
+    PRIVATE = 'private'
+    GROUP = 'group'
+    SUPERGROUP = 'supergroup'
+    CHANNEL = 'channel'
