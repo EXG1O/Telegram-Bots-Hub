@@ -10,6 +10,7 @@ from .models import (
     APIRequest,
     BackgroundTask,
     Bot,
+    Chat,
     Condition,
     DatabaseOperation,
     DatabaseRecord,
@@ -23,6 +24,7 @@ from .models import (
     Variable,
 )
 from .schemas import (
+    CreateChat,
     CreateDatabaseRecord,
     CreateUser,
     UpdateDatabaseRecord,
@@ -63,6 +65,9 @@ get_temporary_variables_decoder = msgspec.json.Decoder(list[TemporaryVariable])
 get_temporary_variable_decoder = msgspec.json.Decoder(TemporaryVariable)
 get_variables_decoder = msgspec.json.Decoder(list[Variable])
 get_variable_decoder = msgspec.json.Decoder(Variable)
+get_chats_decoder = msgspec.json.Decoder(list[Chat] | Pagination[Chat])
+get_chat_decoder = msgspec.json.Decoder(Chat)
+create_chat_decoder = msgspec.json.Decoder(Chat)
 get_users_decoder = msgspec.json.Decoder(list[User] | Pagination[User])
 get_user_decoder = msgspec.json.Decoder(User)
 create_user_decoder = msgspec.json.Decoder(User)
@@ -316,6 +321,40 @@ class ServiceClient:
     async def get_variable(self, id: int) -> Variable:
         return await self._request(
             hdrs.METH_GET, f'variables/{id}/', decoder=get_variable_decoder
+        )
+
+    @overload
+    async def get_chats(
+        self, limit: None = None, offset: int | None = None
+    ) -> list[Chat]: ...
+
+    @overload
+    async def get_chats(
+        self, limit: int, offset: int | None = None
+    ) -> Pagination[Chat]: ...
+
+    async def get_chats(
+        self, limit: int | None = None, offset: int | None = None
+    ) -> list[Chat] | Pagination[Chat]:
+        params: dict[str, str] = {}
+
+        if limit is not None:
+            params['limit'] = str(limit)
+        if offset is not None:
+            params['offset'] = str(offset)
+
+        return await self._request(
+            hdrs.METH_GET, 'chats/', params=params, decoder=get_chats_decoder
+        )
+
+    async def get_chat(self, id: int) -> Chat:
+        return await self._request(
+            hdrs.METH_GET, f'chats/{id}/', decoder=get_chat_decoder
+        )
+
+    async def create_chat(self, data: CreateChat) -> Chat:
+        return await self._request(
+            hdrs.METH_POST, 'chats/', data=data, decoder=create_chat_decoder
         )
 
     @overload

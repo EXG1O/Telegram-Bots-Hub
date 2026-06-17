@@ -3,6 +3,7 @@ import msgspec
 from .enums import (
     APIRequestMethod,
     BackgroundTaskInterval,
+    ChatType,
     ConditionPartNextPartOperator,
     ConditionPartOperator,
     ConditionPartType,
@@ -184,6 +185,20 @@ class Variable(ServiceObject):
     id: int
     name: str
     value: str
+
+
+class Chat(ServiceObject):
+    id: int
+    telegram_id: int
+    type: ChatType
+    title: str | None
+    username: str | None
+    first_name: str | None
+    last_name: str | None
+    is_forum: bool
+    is_direct_messages: bool
+    is_allowed: bool
+    is_blocked: bool
 
 
 class User(ServiceObject):

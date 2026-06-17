@@ -1,4 +1,23 @@
+from .enums import ChatType
+
 from typing import Any, TypedDict
+
+
+class ExistingUser(TypedDict, total=False):
+    id: int
+    telegram_id: int
+
+
+class CreateChat(TypedDict):
+    telegram_id: int
+    type: ChatType
+    title: str | None
+    username: str | None
+    first_name: str | None
+    last_name: str | None
+    is_forum: bool
+    is_direct_messages: bool
+    users: list[ExistingUser]
 
 
 class CreateUser(TypedDict):
