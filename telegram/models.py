@@ -60,6 +60,8 @@ class Chat(TelegramObject):
     username: str | None = None
     first_name: str | None = None
     last_name: str | None = None
+    is_forum: bool = False
+    is_direct_messages: bool = False
 
     @property
     def full_name(self) -> str | None:
