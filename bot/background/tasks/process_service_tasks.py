@@ -28,7 +28,9 @@ class ProcessServiceTasksTask(BackgroundTask):
         service_chat: ServiceChat,
         task: ServiceBackgroundTask,
     ) -> None:
-        if not is_subject_allowed(service_bot=service_bot, service_subject=service_chat):
+        if not is_subject_allowed(
+            service_bot=service_bot, service_subject=service_chat
+        ):
             return
 
         update = Update(update_id=0)
