@@ -7,17 +7,10 @@ from .models import BotStorageData, ChatStorageData, UserStorageData
 
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
-import asyncio
-import weakref
 
 bot_storage_decoder = msgspec.json.Decoder(BotStorageData)
 chat_storage_decoder = msgspec.json.Decoder(ChatStorageData)
 user_storage_decoder = msgspec.json.Decoder(UserStorageData)
-
-_storage_main_lock = asyncio.Lock()
-_storage_locks: weakref.WeakValueDictionary[str, asyncio.Lock] = (
-    weakref.WeakValueDictionary()
-)
 
 
 class Storage[T: msgspec.Struct]:
@@ -71,15 +64,7 @@ class Storage[T: msgspec.Struct]:
 
     @asynccontextmanager
     async def transaction(self) -> AsyncIterator[T]:
-        key: str = self.redis_key
-
-        async with _storage_main_lock:
-            lock: asyncio.Lock | None = _storage_locks.get(key)
-            if lock is None:
-                lock = asyncio.Lock()
-                _storage_locks[key] = lock
-
-        async with lock:
+        async with redis.lock(f'{self.redis_key}:lock', timeout=3):
             data: T = await self.get_data()
             yield data
             await self._set_data(data)
