@@ -8,7 +8,6 @@ from core.settings import MODE, TELEGRAM_TOKEN
 from core.storage import bots
 from service.client import ServiceClient
 from service.enums import ChatType as ServiceChatType
-from service.models import Chat as ServiceChat
 from service.models import Trigger
 from service.schemas import BindUserToChat, CreateChat, CreateUser
 
