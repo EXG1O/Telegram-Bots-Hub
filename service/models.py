@@ -55,10 +55,15 @@ class TriggerMessage(ServiceObject):
     text: str | None
 
 
+class TriggerWebhook(ServiceObject):
+    pass
+
+
 class Trigger(ServiceObject):
     id: int
     command: TriggerCommand | None
     message: TriggerMessage | None
+    webhook: TriggerWebhook | None
     source_connections: list[Connection]
 
 
