@@ -9,7 +9,7 @@ from core.storage import bots
 
 from .deps import ValidBot, verify_self_token
 from .exceptions import BotAlreadyEnabledError
-from .schemas import RestartBotData, StartBotData, StartBotsItemData
+from .schemas import BotWebhookTrigger, RestartBotData, StartBotData, StartBotsItemData
 
 import asyncio
 import logging
@@ -22,6 +22,7 @@ router = APIRouter(dependencies=[Depends(verify_self_token)])
 bot_start_sem = asyncio.Semaphore(10)
 
 update_decoder = msgspec.json.Decoder(Update)
+bot_webhook_trigger_decoder = msgspec.json.Decoder(BotWebhookTrigger)
 
 
 @router.get('/bots/')
@@ -90,4 +91,19 @@ async def bot_webhook(
 ) -> None:
     background_tasks.add_task(
         bot.feed_webhook_update, update_decoder.decode(await request.body())
+    )
+
+
+@router.post(
+    '/bots/{service_id}/webhooks/trigger/', status_code=status.HTTP_202_ACCEPTED
+)
+async def bot_webhook_trigger(
+    service_id: int, bot: ValidBot, request: Request, background_tasks: BackgroundTasks
+) -> None:
+    data: BotWebhookTrigger = bot_webhook_trigger_decoder.decode(await request.body())
+    background_tasks.add_task(
+        bot.feed_webhook_trigger,
+        data.trigger,
+        data.trigger_has_target_connections,
+        data.payload,
     )

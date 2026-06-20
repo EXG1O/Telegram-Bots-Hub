@@ -3,7 +3,13 @@ import msgspec
 from datetime import datetime
 
 
+class TriggerSubscriber(msgspec.Struct, frozen=True):
+    chat_id: int
+    user_id: int | None = None
+
+
 class BotStorageData(msgspec.Struct):
+    expected_triggers: dict[int, set[TriggerSubscriber]] = {}
     completed_background_tasks: dict[int, datetime] = {}
 
 

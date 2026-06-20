@@ -1,4 +1,7 @@
 from pydantic import BaseModel
+import msgspec
+
+from service.models import Trigger
 
 
 class BotStartupData(BaseModel):
@@ -16,3 +19,9 @@ class StartBotData(BotStartupData):
 
 class RestartBotData(BotStartupData):
     pass
+
+
+class BotWebhookTrigger(msgspec.Struct):
+    trigger: Trigger
+    trigger_has_target_connections: bool
+    payload: str
