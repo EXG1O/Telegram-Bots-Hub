@@ -8,9 +8,8 @@ from core.settings import MODE, TELEGRAM_TOKEN
 from core.storage import bots
 from service.client import ServiceClient
 from service.enums import ChatType as ServiceChatType
-from service.models import Chat as ServiceChat
 from service.models import Trigger
-from service.schemas import CreateChat, CreateUser, ExistingUser
+from service.schemas import BindUserToChat, CreateChat, CreateUser
 
 from .background.manager import BackgroundTaskManager
 from .handler import Handler
@@ -54,13 +53,24 @@ class Bot:
 
     async def _is_update_allowed(self, update: Update) -> bool:
         chat: Chat | None = update.effective_chat
-        user: User | None = update.effective_user
 
-        if not user:
+        if not chat:
             return False
 
-        service_bot, service_user = await asyncio.gather(
+        service_bot, service_chat, service_user = await asyncio.gather(
             self.service.get_bot(),
+            self.service.create_chat(
+                data=CreateChat(
+                    telegram_id=chat.id,
+                    type=ServiceChatType(chat.type),
+                    title=chat.title,
+                    username=chat.username,
+                    first_name=chat.first_name,
+                    last_name=chat.last_name,
+                    is_forum=chat.is_forum,
+                    is_direct_messages=chat.is_direct_messages,
+                )
+            ),
             self.service.create_user(
                 data=CreateUser(
                     telegram_id=user.id,
@@ -70,33 +80,24 @@ class Bot:
                     is_bot=user.is_bot,
                     is_premium=user.is_premium,
                 )
-            ),
-        )
-        is_allowed_user: bool = is_subject_allowed(
-            service_bot=service_bot, service_subject=service_user
-        )
-
-        if not chat:
-            return is_allowed_user
-
-        service_chat: ServiceChat = await self.service.create_chat(
-            data=CreateChat(
-                telegram_id=chat.id,
-                type=ServiceChatType(chat.type),
-                title=chat.title,
-                username=chat.username,
-                first_name=chat.first_name,
-                last_name=chat.last_name,
-                is_forum=chat.is_forum,
-                is_direct_messages=chat.is_direct_messages,
-                users=[ExistingUser(id=service_user.id)],
             )
-        )
-        is_allowed_chat: bool = is_subject_allowed(
-            service_bot=service_bot, service_subject=service_chat
+            if (user := update.effective_user)
+            else asyncio.sleep(0),
         )
 
-        return is_allowed_chat and is_allowed_user
+        if service_user:
+            await asyncio.create_task(
+                self.service.bind_users_to_chat(
+                    id=service_chat.id, data=[BindUserToChat(id=service_user.id)]
+                )
+            )
+
+        return is_subject_allowed(
+            service_bot=service_bot, service_subject=service_chat
+        ) and (
+            not service_user
+            or is_subject_allowed(service_bot=service_bot, service_subject=service_user)
+        )
 
     async def feed_webhook_update(self, update: Update) -> None:
         if not await self._is_update_allowed(update):

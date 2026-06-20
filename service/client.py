@@ -24,6 +24,7 @@ from .models import (
     Variable,
 )
 from .schemas import (
+    BindUserToChat,
     CreateChat,
     CreateDatabaseRecord,
     CreateUser,
@@ -31,6 +32,7 @@ from .schemas import (
     UpdateDatabaseRecords,
 )
 
+from collections.abc import Iterable
 from typing import Any, Final, overload
 import logging
 
@@ -325,19 +327,38 @@ class ServiceClient:
 
     @overload
     async def get_chats(
-        self, limit: None = None, offset: int | None = None
+        self,
+        *,
+        ids: Iterable[int] | None = None,
+        telegram_ids: Iterable[int] | None = None,
+        limit: None = None,
+        offset: int | None = None,
     ) -> list[Chat]: ...
 
     @overload
     async def get_chats(
-        self, limit: int, offset: int | None = None
+        self,
+        *,
+        ids: Iterable[int] | None = None,
+        telegram_ids: Iterable[int] | None = None,
+        limit: int,
+        offset: int | None = None,
     ) -> Pagination[Chat]: ...
 
     async def get_chats(
-        self, limit: int | None = None, offset: int | None = None
+        self,
+        *,
+        ids: Iterable[int] | None = None,
+        telegram_ids: Iterable[int] | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
     ) -> list[Chat] | Pagination[Chat]:
         params: dict[str, str] = {}
 
+        if ids is not None:
+            params['ids'] = ','.join(map(str, ids))
+        if telegram_ids is not None:
+            params['telegram_ids'] = ','.join(map(str, telegram_ids))
         if limit is not None:
             params['limit'] = str(limit)
         if offset is not None:
@@ -357,21 +378,43 @@ class ServiceClient:
             hdrs.METH_POST, 'chats/', data=data, decoder=create_chat_decoder
         )
 
+    async def bind_users_to_chat(self, id: int, data: list[BindUserToChat]) -> None:
+        return await self._request(hdrs.METH_POST, f'chats/{id}/users/', data=data)
+
     @overload
     async def get_users(
-        self, limit: None = None, offset: int | None = None
+        self,
+        *,
+        ids: Iterable[int] | None = None,
+        telegram_ids: Iterable[int] | None = None,
+        limit: None = None,
+        offset: int | None = None,
     ) -> list[User]: ...
 
     @overload
     async def get_users(
-        self, limit: int, offset: int | None = None
+        self,
+        *,
+        ids: Iterable[int] | None = None,
+        telegram_ids: Iterable[int] | None = None,
+        limit: int,
+        offset: int | None = None,
     ) -> Pagination[User]: ...
 
     async def get_users(
-        self, limit: int | None = None, offset: int | None = None
+        self,
+        *,
+        ids: Iterable[int] | None = None,
+        telegram_ids: Iterable[int] | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
     ) -> list[User] | Pagination[User]:
         params: dict[str, str] = {}
 
+        if ids is not None:
+            params['ids'] = ','.join(map(str, ids))
+        if telegram_ids is not None:
+            params['telegram_ids'] = ','.join(map(str, telegram_ids))
         if limit is not None:
             params['limit'] = str(limit)
         if offset is not None:

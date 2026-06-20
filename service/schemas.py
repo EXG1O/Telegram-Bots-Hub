@@ -3,11 +3,6 @@ from .enums import ChatType
 from typing import Any, TypedDict
 
 
-class ExistingUser(TypedDict, total=False):
-    id: int
-    telegram_id: int
-
-
 class CreateChat(TypedDict):
     telegram_id: int
     type: ChatType
@@ -17,7 +12,11 @@ class CreateChat(TypedDict):
     last_name: str | None
     is_forum: bool
     is_direct_messages: bool
-    users: list[ExistingUser]
+
+
+class BindUserToChat(TypedDict, total=False):
+    id: int
+    telegram_id: int
 
 
 class CreateUser(TypedDict):
