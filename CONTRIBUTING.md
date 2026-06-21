@@ -26,10 +26,10 @@ source .venv/bin/activate
 
 ## Usage
 
-To run the microservice, use the following command:
+To run the microservice:
 
 ```bash
-uvicorn main:app
+uvicorn --reload main:app
 ```
 
 ## Code Formatting and Linting
