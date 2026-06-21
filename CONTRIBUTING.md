@@ -17,7 +17,15 @@ git clone https://github.com/EXG1O/Telegram-Bots-Hub.git
 cd Telegram-Bots-Hub
 ```
 
-### 2. Set up environment and dependencies
+### 2. Configure environment variables
+
+Copy the `.env.example` file to `.env` and configure it with your settings:
+
+```bash
+cp .env.example .env
+```
+
+### 3. Set up environment and dependencies
 
 ```bash
 uv sync --locked
