@@ -39,16 +39,24 @@ async def _start_bot(service_id: int, token: str, webhook_url: str) -> None:
             await bot.start()
         except Exception as error:
             await bot.stop()
-            logger.exception('Unexpected error during start of bot %s.', service_id)
+            logger.exception(
+                'Unexpected error during start of bot (service_id=%s).', service_id
+            )
             raise error
+
+
+async def _start_bots(data: list[StartBotsItemData]) -> None:
+    await asyncio.gather(
+        *[_start_bot(item.id, item.token, item.webhook_url) for item in data],
+        return_exceptions=True,
+    )
 
 
 @router.post('/bots/start/', status_code=status.HTTP_202_ACCEPTED)
 async def start_bots(
     data: list[StartBotsItemData], background_tasks: BackgroundTasks
 ) -> None:
-    for item in data:
-        background_tasks.add_task(_start_bot, item.id, item.token, item.webhook_url)
+    background_tasks.add_task(_start_bots, data)
 
 
 @router.post('/bots/{service_id}/start/', status_code=status.HTTP_202_ACCEPTED)
