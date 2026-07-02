@@ -23,18 +23,6 @@ import html
 
 
 class MessageHandler(BaseHandler[ServiceMessage]):
-    async def _delete_last_bot_messages(
-        self, chat: Chat, chat_storage: Storage[ChatStorageData]
-    ) -> None:
-        async with chat_storage.transaction() as storage_data:
-            last_bot_message_ids: list[int] = storage_data.last_bot_message_ids.copy()
-            storage_data.last_bot_message_ids.clear()
-
-        if not last_bot_message_ids:
-            return
-
-        await self.bot.telegram.delete_messages(chat.id, last_bot_message_ids)
-
     async def _send_media_group(
         self,
         chat_id: int,
@@ -48,7 +36,7 @@ class MessageHandler(BaseHandler[ServiceMessage]):
             'reply_parameters': reply_parameters,
         }
 
-        new_bot_messages: list[Message] = []
+        bot_messages: list[Message] = []
         processed_types: set[InputMediaType] = set()
         extras_attached: bool = False
 
@@ -76,11 +64,11 @@ class MessageHandler(BaseHandler[ServiceMessage]):
                 send_file: Callable[..., Awaitable[Message]] = getattr(
                     self.bot.telegram, f'send_{type}'
                 )
-                new_bot_messages.append(await send_file(**custom_kwargs))
+                bot_messages.append(await send_file(**custom_kwargs))
                 continue
 
             for start_index in range(0, len(files), MediaGroupLimit.MAX_MEDIA_LENGTH):
-                new_bot_messages.extend(
+                bot_messages.extend(
                     await self.bot.telegram.send_media_group(
                         media=files[
                             start_index : start_index + MediaGroupLimit.MAX_MEDIA_LENGTH
@@ -90,22 +78,21 @@ class MessageHandler(BaseHandler[ServiceMessage]):
                 )
 
         if text and not extras_attached:
-            new_bot_messages.append(
+            bot_messages.append(
                 await self.bot.telegram.send_message(
                     text=text, reply_markup=keyboard, **kwargs
                 )
             )
 
-        return new_bot_messages
+        return bot_messages
 
     async def _process_message(
         self,
         chat: Chat,
         reply_to_event_message_id: int | None,
         message: ServiceMessage,
-        chat_storage: Storage[ChatStorageData],
         variables: Variables,
-    ) -> None:
+    ) -> list[Message]:
         reply_parameters: ReplyParameters | None = (
             ReplyParameters(message_id=reply_to_event_message_id)
             if message.settings.reply_to_user_message and reply_to_event_message_id
@@ -132,10 +119,10 @@ class MessageHandler(BaseHandler[ServiceMessage]):
             build_keyboard(message.keyboard) if message.keyboard else None
         )
 
-        last_bot_messages: list[Message] = []
+        bot_messages: list[Message] = []
 
         if text and not any(media.values()):
-            last_bot_messages.append(
+            bot_messages.append(
                 await self.bot.telegram.send_message(
                     chat_id=chat.id,
                     reply_parameters=reply_parameters,
@@ -144,7 +131,7 @@ class MessageHandler(BaseHandler[ServiceMessage]):
                 )
             )
         else:
-            last_bot_messages.extend(
+            bot_messages.extend(
                 await self._send_media_group(
                     chat_id=chat.id,
                     reply_parameters=reply_parameters,
@@ -154,10 +141,7 @@ class MessageHandler(BaseHandler[ServiceMessage]):
                 )
             )
 
-        async with chat_storage.transaction() as storage_data:
-            storage_data.last_bot_message_ids = [
-                last_bot_message.message_id for last_bot_message in last_bot_messages
-            ]
+        return bot_messages
 
     async def handle(
         self, update: Update, message: ServiceMessage, context: HandlerContext
@@ -167,6 +151,9 @@ class MessageHandler(BaseHandler[ServiceMessage]):
 
         if not (chat and chat_storage):
             return None
+
+        storage_data: ChatStorageData = await chat_storage.get_data()
+        old_last_bot_message_ids: list[int] = storage_data.last_bot_message_ids
 
         reply_to_event_message_id: int | None = (
             event_message.message_id
@@ -178,12 +165,19 @@ class MessageHandler(BaseHandler[ServiceMessage]):
             else None
         )
 
-        await self._process_message(
-            chat, reply_to_event_message_id, message, chat_storage, context.variables
+        bot_messages: list[Message] = await self._process_message(
+            chat, reply_to_event_message_id, message, context.variables
         )
 
-        if not message.settings.send_as_new_message:
-            asyncio.create_task(self._delete_last_bot_messages(chat, chat_storage))
+        async with chat_storage.transaction() as storage_data:
+            storage_data.last_bot_message_ids = [
+                bot_message.message_id for bot_message in bot_messages
+            ]
+
+        if not message.settings.send_as_new_message and old_last_bot_message_ids:
+            asyncio.create_task(
+                self.bot.telegram.delete_messages(chat.id, old_last_bot_message_ids)
+            )
         if message.settings.delete_user_message and reply_to_event_message_id:
             asyncio.create_task(
                 self.bot.telegram.delete_message(chat.id, reply_to_event_message_id)
