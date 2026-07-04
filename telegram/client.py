@@ -52,6 +52,8 @@ send_message_decoder = msgspec.json.Decoder(TelegramResponse[Message])
 send_photo_decoder = msgspec.json.Decoder(TelegramResponse[Message])
 send_document_decoder = msgspec.json.Decoder(TelegramResponse[Message])
 send_media_group_decoder = msgspec.json.Decoder(TelegramResponse[list[Message]])
+edit_message_text_decoder = msgspec.json.Decoder(TelegramResponse[Message])
+edit_message_media_decoder = msgspec.json.Decoder(TelegramResponse[Message])
 delete_message_decoder = msgspec.json.Decoder(TelegramResponse[bool])
 delete_messages_decoder = msgspec.json.Decoder(TelegramResponse[bool])
 
@@ -279,6 +281,43 @@ class TelegramClient:
                 'media': media,
             },
             decoder=send_media_group_decoder,
+        )
+
+    async def edit_message_text(
+        self,
+        chat_id: int,
+        message_id: int,
+        text: str,
+        reply_markup: KeyboardMarkup | None = None,
+    ) -> Message:
+        return await self._request(
+            'editMessageText',
+            data={
+                'chat_id': chat_id,
+                'message_id': message_id,
+                'text': text,
+                'parse_mode': PARSE_MODE,
+                'reply_markup': reply_markup,
+            },
+            decoder=edit_message_text_decoder,
+        )
+
+    async def edit_message_media(
+        self,
+        chat_id: int,
+        message_id: int,
+        media: InputMedia,
+        reply_markup: KeyboardMarkup | None = None,
+    ) -> Message:
+        return await self._request(
+            'editMessageMedia',
+            data={
+                'chat_id': chat_id,
+                'message_id': message_id,
+                'media': media,
+                'reply_markup': reply_markup,
+            },
+            decoder=edit_message_media_decoder,
         )
 
     async def delete_message(self, chat_id: int, message_id: int) -> bool:
