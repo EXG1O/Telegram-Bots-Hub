@@ -134,7 +134,7 @@ class MessageHandler(BaseHandler[ServiceMessage]):
             sorted_last_bot_message_ids: list[int] = sorted(last_bot_message_ids)
 
             if trimmed_last_bot_message_ids := sorted_last_bot_message_ids[:-1]:
-                await asyncio.create_task(
+                asyncio.create_task(
                     self.bot.telegram.delete_messages(
                         chat.id, trimmed_last_bot_message_ids
                     )
