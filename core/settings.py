@@ -20,7 +20,7 @@ LOGS_DIR: Final[Path] = BASE_DIR / 'logs' / CONTAINER_ID
 os.makedirs(LOGS_DIR, exist_ok=True)
 
 
-MODE: Final[Mode] = Mode(os.getenv('MODE', 'debug').lower())
+MODE: Final[Mode] = Mode(os.getenv('MODE', Mode.DEBUG).lower())
 
 BOT_BACKGROUND_MONITOR_TOKEN_INTERVAL: Final[int] = 60 if MODE == Mode.DEBUG else 86400
 BOT_BACKGROUND_PROCESS_SERVICE_TASKS_INTERVAL: Final[int] = (
@@ -29,12 +29,12 @@ BOT_BACKGROUND_PROCESS_SERVICE_TASKS_INTERVAL: Final[int] = (
 
 REDIS_URL: Final[str] = os.environ['REDIS_URL']
 
-SELF_TOKEN: Final[str] = os.environ['SELF_TOKEN']
+APP_TOKEN: Final[str] = os.environ['APP_TOKEN']
 TELEGRAM_TOKEN: Final[str] = os.environ['TELEGRAM_TOKEN']
 
 SERVICE_URL: Final[URL] = URL(os.environ['SERVICE_URL'])
-SERVICE_UNIX_SOCK: Final[Path | None] = (
-    Path(path) if (path := os.getenv('SERVICE_UNIX_SOCK')) else None
+SERVICE_SOCKET: Final[Path | None] = (
+    Path(path) if (path := os.getenv('SERVICE_SOCKET')) else None
 )
 SERVICE_TOKEN: Final[str] = os.environ['SERVICE_TOKEN']
 
