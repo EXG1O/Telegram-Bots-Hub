@@ -4,17 +4,17 @@ from fastapi.security import APIKeyHeader
 
 from api.exceptions import BotNotFoundError
 from bot import Bot
-from core.settings import SELF_TOKEN
+from core.settings import APP_TOKEN
 from core.storage import bots
 
 from typing import Annotated
 import hmac
 
-self_token_header = APIKeyHeader(name='X-API-KEY')
+token_header = APIKeyHeader(name='X-API-KEY')
 
 
-async def verify_self_token(token: Annotated[str, Depends(self_token_header)]) -> str:
-    if not hmac.compare_digest(token, SELF_TOKEN):
+async def verify_token(token: Annotated[str, Depends(token_header)]) -> str:
+    if not hmac.compare_digest(token, APP_TOKEN):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     return token
 

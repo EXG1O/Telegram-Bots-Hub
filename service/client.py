@@ -4,7 +4,7 @@ from yarl import URL
 import msgspec
 
 from core.msgspec import json_encoder
-from core.settings import SERVICE_TOKEN, SERVICE_UNIX_SOCK, SERVICE_URL
+from core.settings import SERVICE_SOCKET, SERVICE_TOKEN, SERVICE_URL
 
 from .models import (
     APIRequest,
@@ -94,8 +94,8 @@ class ServiceClient:
             cls._session = ClientSession(
                 # Don't move the init of the `UnixConnector` class outside of this class, ...
                 # because it will cause an error when sending requests.
-                connector=UnixConnector(path=str(SERVICE_UNIX_SOCK))
-                if SERVICE_UNIX_SOCK
+                connector=UnixConnector(path=str(SERVICE_SOCKET))
+                if SERVICE_SOCKET
                 else None,
                 headers=HEADERS,
                 cookie_jar=DummyCookieJar(),

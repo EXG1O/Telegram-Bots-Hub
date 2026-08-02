@@ -7,7 +7,7 @@ import msgspec
 from bot import Bot
 from core.storage import bots
 
-from .deps import ValidBot, verify_self_token
+from .deps import ValidBot, verify_token
 from .exceptions import BotAlreadyEnabledError
 from .schemas import BotWebhookTrigger, RestartBotData, StartBotData, StartBotsItemData
 
@@ -17,7 +17,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-router = APIRouter(dependencies=[Depends(verify_self_token)])
+router = APIRouter(dependencies=[Depends(verify_token)])
 
 bot_start_sem = asyncio.Semaphore(10)
 
