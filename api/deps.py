@@ -8,13 +8,13 @@ from core.settings import APP_TOKEN
 from core.storage import bots
 
 from typing import Annotated
-import hmac
+import secrets
 
 token_header = APIKeyHeader(name='X-API-KEY')
 
 
 async def verify_token(token: Annotated[str, Depends(token_header)]) -> str:
-    if not hmac.compare_digest(token, APP_TOKEN):
+    if not secrets.compare_digest(token, APP_TOKEN):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     return token
 
