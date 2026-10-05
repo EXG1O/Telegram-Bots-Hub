@@ -5,7 +5,7 @@ from core.redis import redis
 
 from .models import BotStorageData, ChatStorageData, UserStorageData
 
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncGenerator, Callable
 from contextlib import asynccontextmanager
 
 bot_storage_decoder = msgspec.json.Decoder(BotStorageData)
@@ -63,7 +63,7 @@ class Storage[T: msgspec.Struct]:
         )
 
     @asynccontextmanager
-    async def transaction(self) -> AsyncIterator[T]:
+    async def transaction(self) -> AsyncGenerator[T]:
         async with redis.lock(f'{self.redis_key}:lock', timeout=3):
             data: T = await self.get_data()
             yield data

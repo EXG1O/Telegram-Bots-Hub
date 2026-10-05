@@ -1,16 +1,14 @@
-from telegram.models import Update
+from telegram import Update
 
-from service.models import Connection, ServiceObject
+from service import Connection, ServiceObject
 
 from ..context import HandlerContext
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..bot import Bot
-else:
-    Bot = Any
 
 
 class BaseHandler[T: ServiceObject](ABC):

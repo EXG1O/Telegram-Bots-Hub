@@ -1,21 +1,21 @@
-from telegram.enums import InputMediaType, KeyboardButtonStyle
-from telegram.models import (
+from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     InputMedia,
+    InputMediaType,
     KeyboardButton,
+    KeyboardButtonStyle,
     ReplyKeyboardMarkup,
 )
 from telegram.types import KeyboardMarkup
 
 from core.settings import SERVICE_URL
-from service.enums import MessageKeyboardButtonStyle, MessageKeyboardType
-from service.models import MessageKeyboard, MessageKeyboardButton, MessageMedia
+import service
 
 from urllib.parse import unquote
 
 
-def prepare_media[CM: MessageMedia](
+def prepare_media[CM: service.MessageMedia](
     type: InputMediaType, message_media: list[CM]
 ) -> list[InputMedia]:
     return [
@@ -33,9 +33,9 @@ def prepare_media[CM: MessageMedia](
 
 
 def build_keyboard(
-    message_keyboard: MessageKeyboard,
+    message_keyboard: service.MessageKeyboard,
 ) -> KeyboardMarkup | None:
-    keyboard: list[list[MessageKeyboardButton]] = []
+    keyboard: list[list[service.MessageKeyboardButton]] = []
 
     for button in sorted(
         message_keyboard.buttons, key=lambda btn: (btn.row, btn.position)
@@ -45,7 +45,7 @@ def build_keyboard(
 
         keyboard[button.row].append(button)
 
-    if message_keyboard.type == MessageKeyboardType.DEFAULT:
+    if message_keyboard.type == service.MessageKeyboardType.DEFAULT:
         return ReplyKeyboardMarkup(
             keyboard=[
                 [
@@ -53,7 +53,8 @@ def build_keyboard(
                         text=button.text,
                         style=(
                             KeyboardButtonStyle(button.style.value)
-                            if button.style != MessageKeyboardButtonStyle.DEFAULT
+                            if button.style
+                            != service.MessageKeyboardButtonStyle.DEFAULT
                             else None
                         ),
                     )
@@ -71,7 +72,7 @@ def build_keyboard(
                     text=button.text,
                     style=(
                         KeyboardButtonStyle(button.style.value)
-                        if button.style != MessageKeyboardButtonStyle.DEFAULT
+                        if button.style != service.MessageKeyboardButtonStyle.DEFAULT
                         else None
                     ),
                     url=button.url,

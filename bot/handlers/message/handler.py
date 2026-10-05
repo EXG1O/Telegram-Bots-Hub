@@ -1,11 +1,17 @@
-from telegram.constants import MediaGroupLimit
-from telegram.enums import InputMediaType
+from telegram import (
+    Chat,
+    InputMedia,
+    InputMediaType,
+    MediaGroupLimit,
+    Message,
+    ReplyParameters,
+    Update,
+)
 from telegram.exceptions import BadRequestError
-from telegram.models import Chat, InputMedia, Message, ReplyParameters, Update
 from telegram.types import KeyboardMarkup
 
-from service.models import Connection
-from service.models import Message as ServiceMessage
+from service import Connection
+import service
 
 from ...context import HandlerContext
 from ...storage import Storage
@@ -26,7 +32,7 @@ import copy
 import html
 
 
-class MessageHandler(BaseHandler[ServiceMessage]):
+class MessageHandler(BaseHandler[service.Message]):
     async def _send_media_group(
         self,
         chat_id: int,
@@ -94,7 +100,7 @@ class MessageHandler(BaseHandler[ServiceMessage]):
         self,
         chat: Chat,
         reply_to_event_message_id: int | None,
-        message: ServiceMessage,
+        message: service.Message,
         variables: Variables,
         last_bot_message_ids: list[int] | None = None,
     ) -> tuple[list[Message], bool]:
@@ -190,7 +196,7 @@ class MessageHandler(BaseHandler[ServiceMessage]):
         return bot_messages, False
 
     async def handle(
-        self, update: Update, message: ServiceMessage, context: HandlerContext
+        self, update: Update, message: service.Message, context: HandlerContext
     ) -> list[Connection] | None:
         chat: Chat | None = update.effective_chat
         chat_storage: Storage[ChatStorageData] | None = context.chat_storage

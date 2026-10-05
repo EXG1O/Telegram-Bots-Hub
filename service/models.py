@@ -2,7 +2,7 @@ import msgspec
 
 from .enums import (
     APIRequestMethod,
-    BackgroundTaskInterval,
+    BackgroundTaskStatus,
     ChatType,
     ConditionPartNextPartOperator,
     ConditionPartOperator,
@@ -22,6 +22,8 @@ class ServiceObject(msgspec.Struct):
 
 class Pagination[T: ServiceObject](ServiceObject):
     count: int
+    limit: int
+    offset: int
     results: list[T]
 
 
@@ -128,7 +130,8 @@ class Condition(ServiceObject):
 
 class BackgroundTask(ServiceObject):
     id: int
-    interval: BackgroundTaskInterval
+    status: BackgroundTaskStatus
+    interval: int
     source_connections: list[Connection]
 
 
@@ -183,6 +186,17 @@ class TemporaryVariable(ServiceObject):
     id: int
     name: str
     value: str
+    source_connections: list[Connection]
+
+
+class Timer(ServiceObject):
+    id: int
+    duration_seconds: int
+    source_connections: list[Connection]
+
+
+class Randomizer(ServiceObject):
+    id: int
     source_connections: list[Connection]
 
 

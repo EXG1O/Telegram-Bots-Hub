@@ -1,9 +1,8 @@
-from telegram.models import Update
+from telegram import Update
 
 from core.enums import Mode
 from core.settings import MODE
-from service.enums import ConnectionTargetObjectType
-from service.models import Connection, ServiceObject
+from service import Connection, ConnectionTargetObjectType, ServiceObject
 
 from ..context import HandlerContext
 from .api_request import APIRequestHandler
@@ -22,8 +21,6 @@ import logging
 
 if TYPE_CHECKING:
     from ..bot import Bot
-else:
-    Bot = Any
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +95,7 @@ class ConnectionHandler(BaseHandler[Connection]):
             for result, connection in zip(results, connections, strict=False):
                 if isinstance(result, BaseException):
                     logger.error(
-                        'Failed handling of connection (id=%s).',
+                        'Failed handling of connection (id=%d).',
                         connection.id,
                         exc_info=result,
                     )

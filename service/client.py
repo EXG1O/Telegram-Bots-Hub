@@ -1,10 +1,11 @@
-from aiohttp import ClientSession, DummyCookieJar, UnixConnector, hdrs
+from aiohttp import ClientSession, DummyCookieJar, TCPConnector, UnixConnector, hdrs
 from aiohttp.typedefs import LooseHeaders
 from yarl import URL
 import msgspec
 
 from core.msgspec import json_encoder
 from core.settings import SERVICE_SOCKET, SERVICE_TOKEN, SERVICE_URL
+from core.utils import build_user_agent
 
 from .models import (
     APIRequest,
@@ -28,22 +29,17 @@ from .schemas import (
     CreateChat,
     CreateDatabaseRecord,
     CreateUser,
+    UpdateBackgroundTask,
+    UpdateBackgroundTasks,
     UpdateDatabaseRecord,
     UpdateDatabaseRecords,
 )
 
 from collections.abc import Iterable
-from typing import Any, Final, overload
+from typing import Any, overload
 import logging
 
 logger = logging.getLogger(__name__)
-
-
-HEADERS: Final[LooseHeaders] = {
-    hdrs.AUTHORIZATION: f'Token {SERVICE_TOKEN}',
-    hdrs.CONTENT_TYPE: 'application/json',
-}
-
 
 get_bot_decoder = msgspec.json.Decoder(Bot)
 get_triggers_decoder = msgspec.json.Decoder(list[Trigger])
@@ -56,7 +52,9 @@ get_message_decoder = msgspec.json.Decoder(Message)
 get_conditions_decoder = msgspec.json.Decoder(list[Condition])
 get_condition_decoder = msgspec.json.Decoder(Condition)
 get_background_tasks_decoder = msgspec.json.Decoder(list[BackgroundTask])
+update_background_tasks_decoder = msgspec.json.Decoder(list[BackgroundTask])
 get_background_task_decoder = msgspec.json.Decoder(BackgroundTask)
+update_background_task_decoder = msgspec.json.Decoder(BackgroundTask)
 get_api_requests_decoder = msgspec.json.Decoder(list[APIRequest])
 get_api_request_decoder = msgspec.json.Decoder(APIRequest)
 get_database_operations_decoder = msgspec.json.Decoder(list[DatabaseOperation])
@@ -67,10 +65,10 @@ get_temporary_variables_decoder = msgspec.json.Decoder(list[TemporaryVariable])
 get_temporary_variable_decoder = msgspec.json.Decoder(TemporaryVariable)
 get_variables_decoder = msgspec.json.Decoder(list[Variable])
 get_variable_decoder = msgspec.json.Decoder(Variable)
-get_chats_decoder = msgspec.json.Decoder(list[Chat] | Pagination[Chat])
+get_chats_decoder = msgspec.json.Decoder(Pagination[Chat])
 get_chat_decoder = msgspec.json.Decoder(Chat)
 create_chat_decoder = msgspec.json.Decoder(Chat)
-get_users_decoder = msgspec.json.Decoder(list[User] | Pagination[User])
+get_users_decoder = msgspec.json.Decoder(Pagination[User])
 get_user_decoder = msgspec.json.Decoder(User)
 create_user_decoder = msgspec.json.Decoder(User)
 get_database_records_decoder = msgspec.json.Decoder(list[DatabaseRecord])
@@ -80,24 +78,44 @@ create_database_record_decoder = msgspec.json.Decoder(DatabaseRecord)
 update_database_record_decoder = msgspec.json.Decoder(DatabaseRecord)
 
 
-class ServiceClient:
+class Client:
     _session: ClientSession | None = None
 
     def __init__(self, bot_service_id: int) -> None:
-        self.root_url: URL = (
+        self.url: URL = (
             SERVICE_URL / f'api/telegram-bots-hub/telegram-bots/{bot_service_id}/'
         )
+        self.extra_headers: LooseHeaders = {
+            hdrs.USER_AGENT: build_user_agent(bot_service_id=bot_service_id)
+        }
 
     @classmethod
     def get_session(cls) -> ClientSession:
         if not cls._session:
+            limit: int = 2000
+            limit_per_host: int = 0
+            keepalive_timeout: int = 60
+
             cls._session = ClientSession(
                 # Don't move the init of the `UnixConnector` class outside of this class, ...
                 # because it will cause an error when sending requests.
-                connector=UnixConnector(path=str(SERVICE_SOCKET))
+                connector=UnixConnector(
+                    limit=limit,
+                    limit_per_host=limit_per_host,
+                    keepalive_timeout=keepalive_timeout,
+                    path=str(SERVICE_SOCKET),
+                )
                 if SERVICE_SOCKET
-                else None,
-                headers=HEADERS,
+                else TCPConnector(
+                    limit=limit,
+                    limit_per_host=limit_per_host,
+                    keepalive_timeout=keepalive_timeout,
+                    ttl_dns_cache=900,
+                ),
+                headers={
+                    hdrs.AUTHORIZATION: f'Token {SERVICE_TOKEN}',
+                    hdrs.CONTENT_TYPE: 'application/json',
+                },
                 cookie_jar=DummyCookieJar(),
                 raise_for_status=True,
             )
@@ -138,19 +156,18 @@ class ServiceClient:
         try:
             async with self.session.request(
                 method=method,
-                url=self.root_url / endpoint,
-                data=data and json_encoder.encode(data),
+                url=self.url / endpoint,
                 params=params,
+                data=data and json_encoder.encode(data),
+                headers=self.extra_headers,
             ) as response:
                 if not decoder:
                     return None
-
                 body: bytes = await response.read()
-
             return decoder.decode(body)
-        except Exception as error:
+        except Exception:
             logger.exception('Failed request to the main service.')
-            raise error
+            raise
 
     async def get_bot(self) -> Bot:
         return await self._request(hdrs.METH_GET, '', decoder=get_bot_decoder)
@@ -255,11 +272,39 @@ class ServiceClient:
             decoder=get_background_tasks_decoder,
         )
 
+    async def update_background_tasks(
+        self,
+        data: UpdateBackgroundTasks,
+        ids: Iterable[int] | None = None,
+    ) -> list[BackgroundTask]:
+        params: dict[str, str] = {}
+
+        if ids is not None:
+            params['ids'] = ','.join(map(str, ids))
+
+        return await self._request(
+            hdrs.METH_PATCH,
+            'background-tasks/update-many/',
+            data=data,
+            params=params,
+            decoder=update_background_tasks_decoder,
+        )
+
     async def get_background_task(self, id: int) -> BackgroundTask:
         return await self._request(
             hdrs.METH_GET,
             f'background-tasks/{id}/',
             decoder=get_background_task_decoder,
+        )
+
+    async def update_background_task(
+        self, id: int, data: UpdateBackgroundTask
+    ) -> BackgroundTask:
+        return await self._request(
+            hdrs.METH_PATCH,
+            f'background-tasks/{id}/',
+            data=data,
+            decoder=update_background_task_decoder,
         )
 
     async def get_api_requests(self) -> list[APIRequest]:
@@ -325,26 +370,6 @@ class ServiceClient:
             hdrs.METH_GET, f'variables/{id}/', decoder=get_variable_decoder
         )
 
-    @overload
-    async def get_chats(
-        self,
-        *,
-        ids: Iterable[int] | None = None,
-        telegram_ids: Iterable[int] | None = None,
-        limit: None = None,
-        offset: int | None = None,
-    ) -> list[Chat]: ...
-
-    @overload
-    async def get_chats(
-        self,
-        *,
-        ids: Iterable[int] | None = None,
-        telegram_ids: Iterable[int] | None = None,
-        limit: int,
-        offset: int | None = None,
-    ) -> Pagination[Chat]: ...
-
     async def get_chats(
         self,
         *,
@@ -352,7 +377,7 @@ class ServiceClient:
         telegram_ids: Iterable[int] | None = None,
         limit: int | None = None,
         offset: int | None = None,
-    ) -> list[Chat] | Pagination[Chat]:
+    ) -> Pagination[Chat]:
         params: dict[str, str] = {}
 
         if ids is not None:
@@ -381,26 +406,6 @@ class ServiceClient:
     async def bind_users_to_chat(self, id: int, data: list[BindUserToChat]) -> None:
         return await self._request(hdrs.METH_POST, f'chats/{id}/users/', data=data)
 
-    @overload
-    async def get_users(
-        self,
-        *,
-        ids: Iterable[int] | None = None,
-        telegram_ids: Iterable[int] | None = None,
-        limit: None = None,
-        offset: int | None = None,
-    ) -> list[User]: ...
-
-    @overload
-    async def get_users(
-        self,
-        *,
-        ids: Iterable[int] | None = None,
-        telegram_ids: Iterable[int] | None = None,
-        limit: int,
-        offset: int | None = None,
-    ) -> Pagination[User]: ...
-
     async def get_users(
         self,
         *,
@@ -408,7 +413,7 @@ class ServiceClient:
         telegram_ids: Iterable[int] | None = None,
         limit: int | None = None,
         offset: int | None = None,
-    ) -> list[User] | Pagination[User]:
+    ) -> Pagination[User]:
         params: dict[str, str] = {}
 
         if ids is not None:

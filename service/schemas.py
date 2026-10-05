@@ -1,4 +1,4 @@
-from .enums import ChatType
+from .enums import BackgroundTaskStatus, ChatType
 
 from typing import Any, TypedDict
 
@@ -28,13 +28,16 @@ class CreateUser(TypedDict):
     is_premium: bool
 
 
+class UpdateBackgroundTask(TypedDict, total=False):
+    status: BackgroundTaskStatus
+
+
+UpdateBackgroundTasks = UpdateBackgroundTask
+
+
 class CreateDatabaseRecord(TypedDict):
     data: dict[str, Any] | list[Any]
 
 
-class UpdateDatabaseRecords(TypedDict):
-    data: dict[str, Any] | list[Any]
-
-
-class UpdateDatabaseRecord(TypedDict):
-    data: dict[str, Any] | list[Any]
+UpdateDatabaseRecord = CreateDatabaseRecord
+UpdateDatabaseRecords = UpdateDatabaseRecord

@@ -6,14 +6,12 @@ from core.settings import (
 from .tasks import MonitorTokenTask, ProcessServiceTasksTask
 
 from collections.abc import Awaitable, Callable
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 import asyncio
 import logging
 
 if TYPE_CHECKING:
     from ..bot import Bot
-else:
-    Bot = Any
 
 
 logger = logging.getLogger(__name__)

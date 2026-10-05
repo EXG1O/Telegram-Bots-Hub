@@ -1,6 +1,6 @@
-from telegram.models import Update
+from telegram import Update
 
-from service.models import Connection, TemporaryVariable
+from service import Connection, TemporaryVariable
 
 from ..context import HandlerContext
 from ..storage import Storage

@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 
 from telegram.exceptions import InvalidTokenError
 
-from api.exceptions import BotAlreadyEnabledError, BotNotFoundError
+from .exceptions import BotAlreadyEnabledError, BotNotFoundError
 
 from collections.abc import Callable, Coroutine
 from typing import Any

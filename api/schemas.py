@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 import msgspec
 
-from service.models import Trigger
+from service import Trigger
 
 
 class BotStartupData(BaseModel):

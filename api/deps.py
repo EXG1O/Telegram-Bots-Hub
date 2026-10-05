@@ -2,10 +2,11 @@ from fastapi import Depends, status
 from fastapi.exceptions import HTTPException
 from fastapi.security import APIKeyHeader
 
-from api.exceptions import BotNotFoundError
 from bot import Bot
 from core.settings import APP_TOKEN
 from core.storage import bots
+
+from .exceptions import BotNotFoundError
 
 from typing import Annotated
 import secrets

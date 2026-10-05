@@ -1,6 +1,6 @@
-from telegram.models import Chat, Update, User
+from telegram import Chat, Update, User
 
-from service.models import Trigger
+from service import Trigger
 
 from ..context import HandlerContext
 from ..storage import Storage

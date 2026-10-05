@@ -1,26 +1,15 @@
-from service.models import Bot as ServiceBot
-from service.models import Chat as ServiceChat
-from service.models import User as ServiceUser
+import service
 
 
-def is_subject_allowed(
-    service_bot: ServiceBot, service_subject: ServiceChat | ServiceUser
+def is_service_subject_allowed(
+    bot: service.Bot, subject: service.Chat | service.User
 ) -> bool:
-    return not (
-        service_subject.is_blocked
-        or service_bot.is_private
-        and not service_subject.is_allowed
-    )
+    return not (subject.is_blocked or bot.is_private and not subject.is_allowed)
 
 
-def are_subjects_allowed(
-    service_bot: ServiceBot,
-    service_chat: ServiceChat,
-    service_user: ServiceUser | None = None,
+def are_service_subjects_allowed(
+    bot: service.Bot, chat: service.Chat, user: service.User | None = None
 ) -> bool:
-    return is_subject_allowed(
-        service_bot=service_bot, service_subject=service_chat
-    ) and (
-        not service_user
-        or is_subject_allowed(service_bot=service_bot, service_subject=service_user)
+    return is_service_subject_allowed(bot=bot, subject=chat) and (
+        not user or is_service_subject_allowed(bot=bot, subject=user)
     )

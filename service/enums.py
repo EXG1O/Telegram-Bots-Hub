@@ -1,7 +1,7 @@
-from enum import IntEnum, StrEnum
+from enum import StrEnum
 
 
-class ConnectionSourceObjectType(StrEnum):
+class ConnectionObjectType(StrEnum):
     TRIGGER = 'trigger'
     MESSAGE = 'message'
     MESSAGE_KEYBOARD_BUTTON = 'message_keyboard_button'
@@ -11,16 +11,34 @@ class ConnectionSourceObjectType(StrEnum):
     DATABASE_OPERATION = 'database_operation'
     INVOICE = 'invoice'
     TEMPORARY_VARIABLE = 'temporary_variable'
+    TIMER = 'timer'
+    RANDOMIZER = 'randomizer'
+
+
+class ConnectionSourceObjectType(StrEnum):
+    TRIGGER = ConnectionObjectType.TRIGGER
+    MESSAGE = ConnectionObjectType.MESSAGE
+    MESSAGE_KEYBOARD_BUTTON = ConnectionObjectType.MESSAGE_KEYBOARD_BUTTON
+    CONDITION = ConnectionObjectType.CONDITION
+    BACKGROUND_TASK = ConnectionObjectType.BACKGROUND_TASK
+    API_REQUEST = ConnectionObjectType.API_REQUEST
+    DATABASE_OPERATION = ConnectionObjectType.DATABASE_OPERATION
+    INVOICE = ConnectionObjectType.INVOICE
+    TEMPORARY_VARIABLE = ConnectionObjectType.TEMPORARY_VARIABLE
+    TIMER = ConnectionObjectType.TIMER
+    RANDOMIZER = ConnectionObjectType.RANDOMIZER
 
 
 class ConnectionTargetObjectType(StrEnum):
-    TRIGGER = 'trigger'
-    MESSAGE = 'message'
-    CONDITION = 'condition'
-    API_REQUEST = 'api_request'
-    DATABASE_OPERATION = 'database_operation'
-    INVOICE = 'invoice'
-    TEMPORARY_VARIABLE = 'temporary_variable'
+    TRIGGER = ConnectionObjectType.TRIGGER
+    MESSAGE = ConnectionObjectType.MESSAGE
+    CONDITION = ConnectionObjectType.CONDITION
+    API_REQUEST = ConnectionObjectType.API_REQUEST
+    DATABASE_OPERATION = ConnectionObjectType.DATABASE_OPERATION
+    INVOICE = ConnectionObjectType.INVOICE
+    TEMPORARY_VARIABLE = ConnectionObjectType.TEMPORARY_VARIABLE
+    TIMER = ConnectionObjectType.TIMER
+    RANDOMIZER = ConnectionObjectType.RANDOMIZER
 
 
 class APIRequestMethod(StrEnum):
@@ -63,12 +81,9 @@ class ConditionPartNextPartOperator(StrEnum):
     OR = '||'
 
 
-class BackgroundTaskInterval(IntEnum):
-    DAY_1 = 1
-    DAY_3 = 3
-    DAY_7 = 7
-    DAY_14 = 14
-    DAY_28 = 28
+class BackgroundTaskStatus(StrEnum):
+    PENDING = 'pending'
+    RUNNING = 'running'
 
 
 class ChatType(StrEnum):

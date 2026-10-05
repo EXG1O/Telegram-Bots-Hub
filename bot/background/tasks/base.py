@@ -1,10 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ...bot import Bot
-else:
-    Bot = Any
 
 
 class BackgroundTask(ABC):

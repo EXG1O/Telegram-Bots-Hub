@@ -3,6 +3,7 @@ from yarl import URL
 
 from .enums import Mode
 
+from datetime import timedelta
 from pathlib import Path
 from typing import Final
 import logging.config
@@ -22,11 +23,6 @@ os.makedirs(LOGS_DIR, exist_ok=True)
 
 MODE: Final[Mode] = Mode(os.getenv('MODE', Mode.DEBUG).lower())
 
-BOT_BACKGROUND_MONITOR_TOKEN_INTERVAL: Final[int] = 60 if MODE == Mode.DEBUG else 86400
-BOT_BACKGROUND_PROCESS_SERVICE_TASKS_INTERVAL: Final[int] = (
-    60 if MODE == Mode.DEBUG else 3600
-)
-
 REDIS_URL: Final[str] = os.environ['REDIS_URL']
 
 APP_TOKEN: Final[str] = os.environ['APP_TOKEN']
@@ -37,6 +33,21 @@ SERVICE_SOCKET: Final[Path | None] = (
     Path(path) if (path := os.getenv('SERVICE_SOCKET')) else None
 )
 SERVICE_TOKEN: Final[str] = os.environ['SERVICE_TOKEN']
+
+
+TELEGRAM_GLOBAL_RATE_LIMIT: Final[float] = 30
+TELEGRAM_GLOBAL_RATE_PERIOD: Final[float] = 1
+TELEGRAM_USER_RATE_LIMIT: Final[float] = 1
+TELEGRAM_USER_RATE_PERIOD: Final[float] = 1
+TELEGRAM_GROUP_RATE_LIMIT: Final[float] = 20
+TELEGRAM_GROUP_RATE_PERIOD: Final[float] = 60
+
+BOT_BACKGROUND_MONITOR_TOKEN_INTERVAL: Final[float] = (
+    timedelta(minutes=1) if MODE == Mode.DEBUG else timedelta(days=1)
+).total_seconds()
+BOT_BACKGROUND_PROCESS_SERVICE_TASKS_INTERVAL: Final[float] = (
+    timedelta(minutes=1) if MODE == Mode.DEBUG else timedelta(minutes=15)
+).total_seconds()
 
 
 logging.config.dictConfig(

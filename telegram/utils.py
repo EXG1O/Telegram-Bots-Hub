@@ -4,9 +4,6 @@ from typing import TYPE_CHECKING, Any, overload
 
 if TYPE_CHECKING:
     from .models import Chat, User
-else:
-    Chat = Any
-    User = Any
 
 
 def prepare_request_data(obj: Any) -> Any:

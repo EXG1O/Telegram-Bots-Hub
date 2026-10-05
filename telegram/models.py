@@ -1,9 +1,8 @@
-from telegram.utils import get_subject_full_name, get_subject_link, get_subject_name
-
 import msgspec
 
 from .constants import PARSE_MODE
 from .enums import ChatType, InputMediaType, KeyboardButtonStyle
+from .utils import get_subject_full_name, get_subject_link, get_subject_name
 
 
 class TelegramObject(msgspec.Struct):
