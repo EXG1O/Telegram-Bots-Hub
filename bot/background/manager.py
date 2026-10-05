@@ -23,7 +23,7 @@ class BackgroundTaskManager:
         self._tasks: set[asyncio.Task[None]] = set()
 
     async def _run_task(
-        self, func: Callable[[], Awaitable[None]], interval: int
+        self, func: Callable[[], Awaitable[None]], interval: float
     ) -> None:
         while True:
             await asyncio.sleep(interval)
