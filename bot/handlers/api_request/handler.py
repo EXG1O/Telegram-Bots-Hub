@@ -1,4 +1,4 @@
-from telegram.models import Update
+from telegram import Update
 
 from aiohttp import (
     ClientError,
@@ -6,9 +6,11 @@ from aiohttp import (
     ClientTimeout,
     DummyCookieJar,
     TCPConnector,
+    hdrs,
 )
 
-from service.models import APIRequest, Connection
+from core.utils import build_user_agent
+from service import APIRequest, Connection
 
 from ...context import HandlerContext
 from ...utils.variables import replace_data_variables
@@ -26,9 +28,9 @@ class APIRequestHandler(BaseHandler[APIRequest]):
                 ClientSession(
                     connector=TCPConnector(resolver=SafeResolver()),
                     headers={
-                        'User-Agent': (
-                            'ConstructorTelegramBots '
-                            f'(constructor.exg1o.org; bot_id={self.bot.telegram_id})'
+                        hdrs.USER_AGENT: build_user_agent(
+                            bot_service_id=self.bot.service_id,
+                            bot_telegram_id=self.bot.telegram_id,
                         )
                     },
                     skip_auto_headers=['User-Agent'],

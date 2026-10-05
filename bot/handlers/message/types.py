@@ -1,4 +1,3 @@
-from telegram.enums import InputMediaType
-from telegram.models import InputMedia
+from telegram import InputMedia, InputMediaType
 
-Media = dict[InputMediaType, list[InputMedia]]
+type Media = dict[InputMediaType, list[InputMedia]]

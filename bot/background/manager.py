@@ -6,14 +6,12 @@ from core.settings import (
 from .tasks import MonitorTokenTask, ProcessServiceTasksTask
 
 from collections.abc import Awaitable, Callable
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 import asyncio
 import logging
 
 if TYPE_CHECKING:
     from ..bot import Bot
-else:
-    Bot = Any
 
 
 logger = logging.getLogger(__name__)
@@ -25,7 +23,7 @@ class BackgroundTaskManager:
         self._tasks: set[asyncio.Task[None]] = set()
 
     async def _run_task(
-        self, func: Callable[[], Awaitable[None]], interval: int
+        self, func: Callable[[], Awaitable[None]], interval: float
     ) -> None:
         while True:
             await asyncio.sleep(interval)

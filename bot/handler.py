@@ -1,6 +1,7 @@
-from telegram.models import Message, Update
+from telegram import Message, Update
 
-from service.models import Connection, MessageKeyboardButton, Trigger
+from service import Connection, Trigger
+import service
 
 from .context import HandlerContext
 from .handlers.connection import ConnectionHandler
@@ -11,22 +12,25 @@ from .variables import Variables
 
 from collections.abc import Awaitable, Callable, Sequence
 from itertools import chain
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 import asyncio
+import logging
 
 if TYPE_CHECKING:
     from .bot import Bot
-else:
-    Bot = Any
+
+type ConnectionFetcher = Callable[
+    [Update, HandlerContext], Awaitable[list[Connection] | None]
+]
+
+logger = logging.getLogger(__name__)
 
 
 class Handler:
     def __init__(self, bot: Bot) -> None:
         self.bot = bot
         self.connection_handler = ConnectionHandler(self.bot)
-        self.connection_fetchers: Sequence[
-            Callable[[Update, HandlerContext], Awaitable[list[Connection] | None]]
-        ] = [
+        self.connection_fetchers: Sequence[ConnectionFetcher] = [
             self._get_wait_trigger_connections,
             self._get_trigger_connections,
             self._get_message_keyboard_button_connections,
@@ -178,7 +182,7 @@ class Handler:
     async def _get_message_keyboard_button_connections(
         self, update: Update, context: HandlerContext
     ) -> list[Connection] | None:
-        buttons: list[MessageKeyboardButton] = []
+        buttons: list[service.MessageKeyboardButton] = []
 
         if (
             (callback_query := update.callback_query)
@@ -203,6 +207,20 @@ class Handler:
             chain.from_iterable(button.source_connections for button in buttons)
         )
 
+    async def _run_fetcher(
+        self, fetcher: ConnectionFetcher, update: Update, context: HandlerContext
+    ) -> None:
+        try:
+            connections: list[Connection] | None = await fetcher(update, context)
+            if connections:
+                await self.connection_handler.handle_many(update, connections, context)
+        except Exception:
+            logger.exception(
+                'Unexpected error processing fetcher %s for update (update_id=%d).',
+                fetcher.__name__,
+                update.update_id,
+            )
+
     async def handle_update(self, update: Update) -> None:
         if update.pre_checkout_query:
             await self.bot.telegram.answer_pre_checkout_query(
@@ -212,20 +230,6 @@ class Handler:
 
         context = HandlerContext(self.bot, update)
 
-        await self.connection_handler.handle_many(
-            update,
-            list(
-                chain.from_iterable(
-                    filter(
-                        None,
-                        await asyncio.gather(
-                            *[
-                                fetcher(update, context)
-                                for fetcher in self.connection_fetchers
-                            ]
-                        ),
-                    )
-                )
-            ),
-            context,
-        )
+        async with asyncio.TaskGroup() as task_group:
+            for fetcher in self.connection_fetchers:
+                task_group.create_task(self._run_fetcher(fetcher, update, context))

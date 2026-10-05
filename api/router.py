@@ -1,6 +1,6 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, Request, status
 
-from telegram.models import Update
+from telegram import Update
 
 import msgspec
 
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(dependencies=[Depends(verify_token)])
 
-bot_start_sem = asyncio.Semaphore(10)
+bot_start_semaphore = asyncio.Semaphore(10)
 
 update_decoder = msgspec.json.Decoder(Update)
 bot_webhook_trigger_decoder = msgspec.json.Decoder(BotWebhookTrigger)
@@ -31,18 +31,18 @@ async def get_bots() -> list[int]:
 
 
 async def _start_bot(service_id: int, token: str, webhook_url: str) -> None:
-    async with bot_start_sem:
+    async with bot_start_semaphore:
         bot = Bot(service_id=service_id, token=token, webhook_url=webhook_url)
         bots[service_id] = bot
 
         try:
             await bot.start()
-        except Exception as error:
+        except Exception:
             await bot.stop()
             logger.exception(
-                'Unexpected error during start of bot (service_id=%s).', service_id
+                'Unexpected error during start of bot (service_id=%d).', service_id
             )
-            raise error
+            raise
 
 
 async def _start_bots(data: list[StartBotsItemData]) -> None:
@@ -70,7 +70,7 @@ async def start_bot(
 
 
 async def _restart_bot(bot: Bot, token: str, webhook_url: str) -> None:
-    await bot.stop()
+    await bot.stop(retain_registry=True)
     await _start_bot(bot.service_id, token, webhook_url)
 
 

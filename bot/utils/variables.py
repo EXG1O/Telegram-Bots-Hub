@@ -6,8 +6,6 @@ import re
 
 if TYPE_CHECKING:
     from ..variables import Variables
-else:
-    Variables = Any
 
 
 VARIABLE_PATTERN: Final[re.Pattern[str]] = re.compile(r'\{\{([^{}]+)\}\}')

@@ -1,7 +1,11 @@
-from telegram.models import Update
+from telegram import Update
 
-from service.enums import ConditionPartNextPartOperator, ConditionPartOperator
-from service.models import Condition, Connection
+from service import (
+    Condition,
+    ConditionPartNextPartOperator,
+    ConditionPartOperator,
+    Connection,
+)
 
 from ..context import HandlerContext
 from ..utils.variables import replace_text_variables

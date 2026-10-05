@@ -1,6 +1,6 @@
-from telegram.models import Chat, LabeledPrice, Update
+from telegram import Chat, LabeledPrice, Update
 
-from service.models import Connection, Invoice
+from service import Connection, Invoice
 
 from ..context import HandlerContext
 from ..utils.variables import replace_text_variables

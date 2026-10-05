@@ -1,6 +1,6 @@
-from telegram.models import Chat, Message, User
+from telegram import Chat, Message, User
 
-from service.models import DatabaseRecord, Variable
+from service import DatabaseRecord, Variable
 
 from .storage import Storage
 from .storage.models import UserStorageData
@@ -12,8 +12,6 @@ import re
 
 if TYPE_CHECKING:
     from ..bot import Bot
-else:
-    Bot = Any
 
 
 VARIABLE_SEARCH_PATTERN: re.Pattern[str] = re.compile(r'\[search=([^\[\]]+)\]')

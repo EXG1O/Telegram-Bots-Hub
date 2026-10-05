@@ -1,17 +1,14 @@
-from telegram.models import Chat, Update, User
-
-from bot.variables import Variables
+from telegram import Chat, Update, User
 
 from .storage import Storage
 from .storage.models import ChatStorageData, UserStorageData
+from .variables import Variables
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 import copy
 
 if TYPE_CHECKING:
     from .bot import Bot
-else:
-    Bot = Any
 
 
 class HandlerContext:

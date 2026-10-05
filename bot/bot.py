@@ -1,7 +1,5 @@
-from telegram.client import TelegramClient
-from telegram.enums import ChatType, UpdateType
-from telegram.exceptions import TelegramError
-from telegram.models import BotCommand, Chat, Update, User
+from telegram import BotCommand, Chat, ChatType, Update, UpdateType, User
+import telegram
 
 from multidict import MultiDict
 import msgspec
@@ -10,13 +8,9 @@ from core.enums import Mode
 from core.msgspec import json_decoder
 from core.settings import MODE, TELEGRAM_TOKEN
 from core.storage import bots
-from service.client import ServiceClient
-from service.enums import ChatType as ServiceChatType
-from service.models import Bot as ServiceBot
-from service.models import Chat as ServiceChat
-from service.models import Pagination, Trigger
-from service.models import User as ServiceUser
-from service.schemas import BindUserToChat, CreateChat, CreateUser
+from core.utils import safe_call
+from service import Trigger
+import service
 
 from .background.manager import BackgroundTaskManager
 from .context import HandlerContext
@@ -24,10 +18,9 @@ from .exceptions import NoTriggerSubscribersError
 from .handler import Handler
 from .storage import Storage
 from .storage.models import TriggerSubscriber
-from .utils.validation import are_subjects_allowed, is_subject_allowed
+from .utils.validation import are_service_subjects_allowed, is_service_subject_allowed
 
 from collections.abc import Awaitable, Iterable
-from contextlib import suppress
 from itertools import batched, repeat
 from typing import TYPE_CHECKING, Any, Final
 import asyncio
@@ -49,9 +42,9 @@ class Bot:
         self.token = token
         self.webhook_url = webhook_url
         self.telegram_id = int(token.split(':')[0])
-        self.telegram = TelegramClient(bot_token=token)
+        self.telegram = telegram.Client(bot_service_id=service_id, bot_token=token)
         self.service_id = service_id
-        self.service = ServiceClient(service_id)
+        self.service = service.Client(service_id)
         self.storage = Storage.for_bot(bot_id=self.telegram_id)
         self.handler = Handler(self)
         self.background_task_manager = BackgroundTaskManager(self)
@@ -71,9 +64,9 @@ class Bot:
         service_bot, service_chat, service_user = await asyncio.gather(
             self.service.get_bot(),
             self.service.create_chat(
-                data=CreateChat(
+                data=service.CreateChat(
                     telegram_id=chat.id,
-                    type=ServiceChatType(chat.type),
+                    type=service.ChatType(chat.type),
                     title=chat.title,
                     username=chat.username,
                     first_name=chat.first_name,
@@ -83,7 +76,7 @@ class Bot:
                 )
             ),
             self.service.create_user(
-                data=CreateUser(
+                data=service.CreateUser(
                     telegram_id=user.id,
                     username=user.username,
                     first_name=user.first_name,
@@ -99,14 +92,15 @@ class Bot:
         if service_user:
             await asyncio.create_task(
                 self.service.bind_users_to_chat(
-                    id=service_chat.id, data=[BindUserToChat(id=service_user.id)]
+                    id=service_chat.id,
+                    data=[service.BindUserToChat(id=service_user.id)],
                 )
             )
 
-        return are_subjects_allowed(
-            service_bot=service_bot,
-            service_chat=service_chat,
-            service_user=service_user,
+        return are_service_subjects_allowed(
+            bot=service_bot,
+            chat=service_chat,
+            user=service_user,
         )
 
     async def feed_webhook_update(self, update: Update) -> None:
@@ -120,7 +114,7 @@ class Bot:
             await task
             elapsed_time: float = time.perf_counter() - start_time
             logger.debug(
-                'Processing of update (id=%s) completed in %s ms.',
+                'Processing of update (id=%d) completed in %d ms.',
                 update.update_id,
                 round(elapsed_time * 1000, 3),
             )
@@ -129,8 +123,8 @@ class Bot:
 
     async def _handle_webhook_trigger(
         self,
-        service_chat: ServiceChat,
-        service_user: ServiceUser | None,
+        service_chat: service.Chat,
+        service_user: service.User | None,
         trigger: Trigger,
         payload: Any,
     ) -> None:
@@ -165,20 +159,20 @@ class Bot:
 
     async def _get_webhook_trigger_allowed_subjects(
         self,
-        service_bot: ServiceBot,
+        service_bot: service.Bot,
         trigger: Trigger,
         trigger_has_target_connections: bool,
         limit: int,
         offset: int,
-    ) -> tuple[Iterable[ServiceChat], Iterable[ServiceUser | None], bool]:
+    ) -> tuple[Iterable[service.Chat], Iterable[service.User | None], bool]:
         if not trigger_has_target_connections:
-            pagination: Pagination[ServiceChat] = await self.service.get_chats(
+            pagination: service.Pagination[service.Chat] = await self.service.get_chats(
                 limit=limit, offset=offset
             )
             return (
                 filter(
-                    lambda chat: is_subject_allowed(
-                        service_bot=service_bot, service_subject=chat
+                    lambda chat: is_service_subject_allowed(
+                        bot=service_bot, subject=chat
                     ),
                     pagination.results,
                 ),
@@ -220,28 +214,26 @@ class Bot:
                 offset=offset,
             ),
         )
-        service_chats: dict[int, ServiceChat] = {
+        service_chats: dict[int, service.Chat] = {
             chat.telegram_id: chat for chat in service_chat_pagination.results
         }
-        service_users: dict[int, ServiceUser] = {
+        service_users: dict[int, service.User] = {
             user.telegram_id: user for user in service_user_pagination.results
         }
 
-        result_service_chats: list[ServiceChat] = []
-        result_service_users: list[ServiceUser | None] = []
+        result_service_chats: list[service.Chat] = []
+        result_service_users: list[service.User | None] = []
 
         for chat_id, user_id in chat_id_user_id_pair.items():
-            service_chat: ServiceChat | None = service_chats.get(int(chat_id))
-            service_user: ServiceUser | None = (
+            service_chat: service.Chat | None = service_chats.get(int(chat_id))
+            service_user: service.User | None = (
                 service_users.get(user_id) if user_id else None
             )
 
             if not (
                 service_chat
-                and are_subjects_allowed(
-                    service_bot=service_bot,
-                    service_chat=service_chat,
-                    service_user=service_user,
+                and are_service_subjects_allowed(
+                    bot=service_bot, chat=service_chat, user=service_user
                 )
             ):
                 continue
@@ -261,7 +253,7 @@ class Bot:
         if not trigger.source_connections:
             return
 
-        service_bot: ServiceBot = await self.service.get_bot()
+        service_bot: service.Bot = await self.service.get_bot()
 
         if TYPE_CHECKING:
             processed_payload: Any | str
@@ -271,7 +263,7 @@ class Bot:
         except msgspec.DecodeError:
             processed_payload = payload
 
-        limit: int = 250
+        limit: int = 150
         offset: int = 0
         batch_size: int = 15
 
@@ -286,7 +278,7 @@ class Bot:
                 )
             except NoTriggerSubscribersError:
                 logger.debug(
-                    'Webhook trigger (service_id=%s) has no subscribers.', trigger.id
+                    'Webhook trigger (service_id=%d) has no subscribers.', trigger.id
                 )
                 break
 
@@ -313,8 +305,8 @@ class Bot:
                 ):
                     if isinstance(result, BaseException):
                         logger.error(
-                            'Failed processing webhook trigger (service_id=%s) '
-                            'for chat (service_id=%s), user (service_id=%s).',
+                            'Failed processing webhook trigger (service_id=%d) '
+                            'for chat (service_id=%d), user (service_id=%d).',
                             trigger.id,
                             service_chat.id,
                             service_user and service_user.id,
@@ -362,11 +354,21 @@ class Bot:
         await self.background_task_manager.start()
         await self.service.assign_to_hub()
 
-    async def stop(self) -> None:
-        try:
-            with suppress(TelegramError):
-                await self.telegram.delete_webhook()
-            del bots[self.service_id]
-            await self.background_task_manager.stop()
-        finally:
-            await self.service.unassign_from_hub()
+    async def stop(self, retain_registry: bool = False) -> None:
+        results: list[Any | Exception] = []
+
+        results.append(await safe_call(self.telegram.delete_webhook()))
+        results.append(await safe_call(self.background_task_manager.stop()))
+
+        if not retain_registry:
+            results.append(await safe_call(self.service.unassign_from_hub()))
+            bots.pop(self.service_id, None)
+
+        if exceptions := [
+            result for result in results if isinstance(result, Exception)
+        ]:
+            logger.error(
+                'Unexpected error during stop of bot (service_id=%d).',
+                self.service_id,
+                exc_info=ExceptionGroup('Errors occurred during bot stop.', exceptions),
+            )

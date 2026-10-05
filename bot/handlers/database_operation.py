@@ -1,13 +1,14 @@
-from telegram.models import Update
+from telegram import Update
 
-from service.models import (
+from service import (
     Connection,
+    CreateDatabaseRecord,
     DatabaseCreateOperation,
     DatabaseOperation,
     DatabaseRecord,
     DatabaseUpdateOperation,
+    UpdateDatabaseRecords,
 )
-from service.schemas import CreateDatabaseRecord, UpdateDatabaseRecords
 
 from ..context import HandlerContext
 from ..utils.variables import replace_data_variables, replace_text_variables

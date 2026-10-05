@@ -1,4 +1,14 @@
-from telegram.exceptions import (
+from aiohttp import ClientSession, DummyCookieJar, TCPConnector, hdrs
+from aiohttp.typedefs import LooseHeaders
+from yarl import URL
+import msgspec
+
+from core.msgspec import json_encoder
+from core.utils import build_user_agent
+
+from .constants import PARSE_MODE
+from .enums import UpdateType
+from .exceptions import (
     BadRequestError,
     ChatMigratedError,
     ConflictError,
@@ -6,18 +16,7 @@ from telegram.exceptions import (
     InvalidTokenError,
     NetworkError,
 )
-from telegram.utils import prepare_request_data
-
-from aiohttp import ClientSession, DummyCookieJar, hdrs
-from aiohttp.typedefs import LooseHeaders
-from aiolimiter import AsyncLimiter
-from yarl import URL
-import msgspec
-
-from core.msgspec import json_encoder
-
-from .constants import PARSE_MODE
-from .enums import UpdateType
+from .limiter import Limiter
 from .models import (
     BotCommand,
     InputMedia,
@@ -28,19 +27,14 @@ from .models import (
     User,
 )
 from .types import KeyboardMarkup
+from .utils import prepare_request_data
 
 from http import HTTPStatus
-from typing import Any, Final
+from typing import Any
 import asyncio
 import logging
 
 logger = logging.getLogger(__name__)
-
-
-HEADERS: Final[LooseHeaders] = {
-    hdrs.USER_AGENT: 'ConstructorTelegramBots (constructor.exg1o.org)',
-    hdrs.CONTENT_TYPE: 'application/json',
-}
 
 get_me_decoder = msgspec.json.Decoder(TelegramResponse[User])
 set_webhook_decoder = msgspec.json.Decoder(TelegramResponse[bool])
@@ -58,37 +52,29 @@ delete_message_decoder = msgspec.json.Decoder(TelegramResponse[bool])
 delete_messages_decoder = msgspec.json.Decoder(TelegramResponse[bool])
 
 
-class TelegramClient:
+class Client:
     _session: ClientSession | None = None
 
-    def __init__(self, bot_token: str) -> None:
+    def __init__(self, bot_service_id: int, bot_token: str) -> None:
         self.url = URL(f'https://api.telegram.org/bot{bot_token}')
-        self._global_limiter = AsyncLimiter(max_rate=30, time_period=1)
-        self._user_limiters: dict[int, AsyncLimiter] = {}
-        self._group_limiters: dict[int, AsyncLimiter] = {}
-
-    def _get_chat_limiter(self, chat_id: int) -> AsyncLimiter:
-        if chat_id > 0:
-            return self._user_limiters.setdefault(
-                chat_id, AsyncLimiter(max_rate=1, time_period=1)
-            )
-
-        return self._group_limiters.setdefault(
-            chat_id, AsyncLimiter(max_rate=20, time_period=60)
-        )
-
-    async def _acquire_rate_limit(self, chat_id: int | None = None) -> None:
-        if chat_id is not None:
-            async with self._get_chat_limiter(chat_id), self._global_limiter:
-                return
-
-        async with self._global_limiter:
-            return
+        self.extra_headers: LooseHeaders = {
+            hdrs.USER_AGENT: build_user_agent(bot_service_id=bot_service_id)
+        }
+        self._limiter = Limiter()
 
     @classmethod
     def get_session(cls) -> ClientSession:
         if not cls._session:
-            cls._session = ClientSession(headers=HEADERS, cookie_jar=DummyCookieJar())
+            cls._session = ClientSession(
+                connector=TCPConnector(
+                    limit=1000,
+                    limit_per_host=0,
+                    ttl_dns_cache=120,
+                    keepalive_timeout=60,
+                ),
+                headers={hdrs.CONTENT_TYPE: 'application/json'},
+                cookie_jar=DummyCookieJar(),
+            )
         return cls._session
 
     @property
@@ -102,12 +88,13 @@ class TelegramClient:
         data: dict[str, Any] | None = None,
     ) -> T:
         chat_id: int | None = data.get('chat_id') if data else None
-        await self._acquire_rate_limit(chat_id)
+        await self._limiter.acquire(chat_id)
 
         try:
             async with self.session.post(
                 self.url / endpoint,
                 data=data and json_encoder.encode(prepare_request_data(data)),
+                headers=self.extra_headers,
             ) as response:
                 body: bytes = await response.read()
 
@@ -139,9 +126,9 @@ class TelegramClient:
                 raise ConflictError(message)  # noqa: TRY301
 
             raise NetworkError(message)  # noqa: TRY301
-        except Exception as error:
+        except Exception:
             logger.exception('Failed request to the Telegram Bot API.')
-            raise error
+            raise
 
     async def get_me(self) -> User:
         return await self._request('getMe', decoder=get_me_decoder)
