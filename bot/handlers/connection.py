@@ -11,7 +11,9 @@ from .condition import ConditionHandler
 from .database_operation import DatabaseOperationHandler
 from .invoice import InvoiceHandler
 from .message import MessageHandler
+from .randomizer import RandomizerHandler
 from .temporary_variable import TemporaryVariableHandler
+from .timer import TimerHandler
 from .trigger import TriggerHandler
 
 from collections.abc import Awaitable, Callable
@@ -52,6 +54,12 @@ class ConnectionHandler(BaseHandler[Connection]):
             ConnectionTargetObjectType.TEMPORARY_VARIABLE: (
                 lambda id: self.bot.service.get_temporary_variable(id)
             ),
+            ConnectionTargetObjectType.TIMER: (
+                lambda id: self.bot.service.get_timer(id)
+            ),
+            ConnectionTargetObjectType.RANDOMIZER: (
+                lambda id: self.bot.service.get_randomizer(id)
+            ),
         }
         self.handlers: dict[ConnectionTargetObjectType, BaseHandler[Any]] = {
             ConnectionTargetObjectType.TRIGGER: TriggerHandler(self.bot),
@@ -65,6 +73,8 @@ class ConnectionHandler(BaseHandler[Connection]):
             ConnectionTargetObjectType.TEMPORARY_VARIABLE: TemporaryVariableHandler(
                 self.bot
             ),
+            ConnectionTargetObjectType.TIMER: TimerHandler(self.bot),
+            ConnectionTargetObjectType.RANDOMIZER: RandomizerHandler(self.bot),
         }
 
     async def handle(
