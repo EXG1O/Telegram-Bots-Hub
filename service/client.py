@@ -19,7 +19,9 @@ from .models import (
     Message,
     MessageKeyboardButton,
     Pagination,
+    Randomizer,
     TemporaryVariable,
+    Timer,
     Trigger,
     User,
     Variable,
@@ -63,6 +65,10 @@ get_invoices_decoder = msgspec.json.Decoder(list[Invoice])
 get_invoice_decoder = msgspec.json.Decoder(Invoice)
 get_temporary_variables_decoder = msgspec.json.Decoder(list[TemporaryVariable])
 get_temporary_variable_decoder = msgspec.json.Decoder(TemporaryVariable)
+get_timers_decoder = msgspec.json.Decoder(list[Timer])
+get_timer_decoder = msgspec.json.Decoder(Timer)
+get_randomizers_decoder = msgspec.json.Decoder(list[Randomizer])
+get_randomizer_decoder = msgspec.json.Decoder(Randomizer)
 get_variables_decoder = msgspec.json.Decoder(list[Variable])
 get_variable_decoder = msgspec.json.Decoder(Variable)
 get_chats_decoder = msgspec.json.Decoder(Pagination[Chat])
@@ -353,6 +359,24 @@ class Client:
             hdrs.METH_GET,
             f'temporary-variables/{id}/',
             decoder=get_temporary_variable_decoder,
+        )
+
+    async def get_timers(self) -> list[Timer]:
+        return await self._request(hdrs.METH_GET, 'timers/', decoder=get_timers_decoder)
+
+    async def get_timer(self, id: int) -> Timer:
+        return await self._request(
+            hdrs.METH_GET, f'timers/{id}/', decoder=get_timer_decoder
+        )
+
+    async def get_randomizers(self) -> list[Randomizer]:
+        return await self._request(
+            hdrs.METH_GET, 'randomizers/', decoder=get_randomizers_decoder
+        )
+
+    async def get_randomizer(self, id: int) -> Randomizer:
+        return await self._request(
+            hdrs.METH_GET, f'randomizers/{id}/', decoder=get_randomizer_decoder
         )
 
     async def get_variables(self, name: str | None = None) -> list[Variable]:
