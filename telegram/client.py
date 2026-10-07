@@ -134,12 +134,17 @@ class Client:
         return await self._request('getMe', decoder=get_me_decoder)
 
     async def set_webhook(
-        self, url: str, allowed_updates: list[UpdateType], secret_token: str
+        self,
+        url: str,
+        max_connections: int,
+        allowed_updates: list[UpdateType],
+        secret_token: str,
     ) -> bool:
         return await self._request(
             'setWebhook',
             data={
                 'url': url,
+                'max_connections': max_connections,
                 'allowed_updates': allowed_updates,
                 'secret_token': secret_token,
             },

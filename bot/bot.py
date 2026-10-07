@@ -6,7 +6,7 @@ import msgspec
 
 from core.enums import Mode
 from core.msgspec import json_decoder
-from core.settings import MODE, TELEGRAM_TOKEN
+from core.settings import BOT_TELEGRAM_WEBHOOK_MAX_CONNECTIONS, MODE, TELEGRAM_TOKEN
 from core.storage import bots
 from core.utils import safe_call
 from service import Trigger
@@ -342,7 +342,8 @@ class Bot:
             self.telegram.get_me(),
             self._set_menu_commands(),
             self.telegram.set_webhook(
-                self.webhook_url,
+                url=self.webhook_url,
+                max_connections=BOT_TELEGRAM_WEBHOOK_MAX_CONNECTIONS,
                 allowed_updates=[
                     UpdateType.MESSAGE,
                     UpdateType.CALLBACK_QUERY,
