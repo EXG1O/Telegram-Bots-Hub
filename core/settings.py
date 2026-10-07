@@ -42,6 +42,9 @@ TELEGRAM_USER_RATE_PERIOD: Final[float] = 1
 TELEGRAM_GROUP_RATE_LIMIT: Final[float] = 20
 TELEGRAM_GROUP_RATE_PERIOD: Final[float] = 60
 
+
+BOT_TELEGRAM_WEBHOOK_MAX_CONNECTIONS: Final[int] = 10
+
 BOT_BACKGROUND_MONITOR_TOKEN_INTERVAL: Final[float] = (
     timedelta(minutes=1) if MODE == Mode.DEBUG else timedelta(days=1)
 ).total_seconds()
