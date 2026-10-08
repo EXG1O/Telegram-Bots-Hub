@@ -7,6 +7,7 @@ from core.msgspec import json_encoder
 from core.settings import SERVICE_SOCKET, SERVICE_TOKEN, SERVICE_URL
 from core.utils import build_user_agent
 
+from .enums import MessageKeyboardType
 from .models import (
     APIRequest,
     BackgroundTask,
@@ -36,6 +37,7 @@ from .schemas import (
     UpdateDatabaseRecord,
     UpdateDatabaseRecords,
 )
+from .utils import normalize_params
 
 from collections.abc import Iterable
 from typing import Any, overload
@@ -49,6 +51,7 @@ get_trigger_decoder = msgspec.json.Decoder(Trigger)
 get_messages_keyboard_buttons_decoder = msgspec.json.Decoder(
     list[MessageKeyboardButton]
 )
+get_messages_keyboard_button_decoder = msgspec.json.Decoder(MessageKeyboardButton)
 get_messages_decoder = msgspec.json.Decoder(list[Message])
 get_message_decoder = msgspec.json.Decoder(Message)
 get_conditions_decoder = msgspec.json.Decoder(list[Condition])
@@ -138,7 +141,7 @@ class Client:
         endpoint: str,
         decoder: msgspec.json.Decoder[T],
         data: Any | None = None,
-        params: dict[str, str] | None = None,
+        params: dict[str, Any] | None = None,
     ) -> T: ...
 
     @overload
@@ -148,7 +151,7 @@ class Client:
         endpoint: str,
         decoder: None = None,
         data: Any | None = None,
-        params: dict[str, str] | None = None,
+        params: dict[str, Any] | None = None,
     ) -> None: ...
 
     async def _request[T](
@@ -157,13 +160,13 @@ class Client:
         endpoint: str,
         decoder: msgspec.json.Decoder[T] | None = None,
         data: Any | None = None,
-        params: dict[str, str] | None = None,
+        params: dict[str, Any] | None = None,
     ) -> T | None:
         try:
             async with self.session.request(
                 method=method,
                 url=self.url / endpoint,
-                params=params,
+                params=params and normalize_params(params),
                 data=data and json_encoder.encode(data),
                 headers=self.extra_headers,
             ) as response:
@@ -186,6 +189,7 @@ class Client:
 
     async def get_triggers(
         self,
+        ids: Iterable[int] | None = None,
         command: str | None = None,
         command_payload: str | None = None,
         has_command: bool | None = None,
@@ -196,29 +200,22 @@ class Client:
         has_source_connections: bool | None = None,
         has_target_connections: bool | None = None,
     ) -> list[Trigger]:
-        params: dict[str, str] = {}
-
-        if command is not None:
-            params['command'] = command
-        if command_payload is not None:
-            params['command_payload'] = command_payload
-        if has_command is not None:
-            params['has_command'] = str(has_command)
-        if has_command_payload is not None:
-            params['has_command_payload'] = str(has_command_payload)
-        if has_command_description is not None:
-            params['has_command_description'] = str(has_command_description)
-        if has_message is not None:
-            params['has_message'] = str(has_message)
-        if has_message_text is not None:
-            params['has_message_text'] = str(has_message_text)
-        if has_source_connections is not None:
-            params['has_source_connections'] = str(has_source_connections)
-        if has_target_connections is not None:
-            params['has_target_connections'] = str(has_target_connections)
-
         return await self._request(
-            hdrs.METH_GET, 'triggers/', params=params, decoder=get_triggers_decoder
+            hdrs.METH_GET,
+            'triggers/',
+            params={
+                'ids': ids,
+                'command': command,
+                'command_payload': command_payload,
+                'has_command': has_command,
+                'has_command_payload': has_command_payload,
+                'has_command_description': has_command_description,
+                'has_message': has_message,
+                'has_message_text': has_message_text,
+                'has_source_connections': has_source_connections,
+                'has_target_connections': has_target_connections,
+            },
+            decoder=get_triggers_decoder,
         )
 
     async def get_trigger(self, id: int) -> Trigger:
@@ -227,20 +224,23 @@ class Client:
         )
 
     async def get_messages_keyboard_buttons(
-        self, id: int | None = None, text: str | None = None
+        self,
+        ids: Iterable[int] | None = None,
+        type: MessageKeyboardType | None = None,
+        text: str | None = None,
     ) -> list[MessageKeyboardButton]:
-        params: dict[str, str] = {}
-
-        if id is not None:
-            params['id'] = str(id)
-        if text is not None:
-            params['text'] = text
-
         return await self._request(
             hdrs.METH_GET,
             'messages-keyboard-buttons/',
-            params=params,
+            params={'ids': ids, 'type': type, 'text': text},
             decoder=get_messages_keyboard_buttons_decoder,
+        )
+
+    async def get_messages_keyboard_button(self, id: int) -> MessageKeyboardButton:
+        return await self._request(
+            hdrs.METH_GET,
+            f'messages-keyboard-buttons/{id}/',
+            decoder=get_messages_keyboard_button_decoder,
         )
 
     async def get_messages(self) -> list[Message]:
@@ -266,15 +266,10 @@ class Client:
     async def get_background_tasks(
         self, has_source_connections: bool | None = None
     ) -> list[BackgroundTask]:
-        params: dict[str, str] = {}
-
-        if has_source_connections is not None:
-            params['has_source_connections'] = str(has_source_connections)
-
         return await self._request(
             hdrs.METH_GET,
             'background-tasks/',
-            params=params,
+            params={'has_source_connections': has_source_connections},
             decoder=get_background_tasks_decoder,
         )
 
@@ -283,16 +278,11 @@ class Client:
         data: UpdateBackgroundTasks,
         ids: Iterable[int] | None = None,
     ) -> list[BackgroundTask]:
-        params: dict[str, str] = {}
-
-        if ids is not None:
-            params['ids'] = ','.join(map(str, ids))
-
         return await self._request(
             hdrs.METH_PATCH,
             'background-tasks/update-many/',
             data=data,
-            params=params,
+            params={'ids': ids},
             decoder=update_background_tasks_decoder,
         )
 
@@ -380,13 +370,11 @@ class Client:
         )
 
     async def get_variables(self, name: str | None = None) -> list[Variable]:
-        params: dict[str, str] = {}
-
-        if name is not None:
-            params['name'] = name
-
         return await self._request(
-            hdrs.METH_GET, 'variables/', decoder=get_variables_decoder
+            hdrs.METH_GET,
+            'variables/',
+            params={'name': name},
+            decoder=get_variables_decoder,
         )
 
     async def get_variable(self, id: int) -> Variable:
@@ -402,19 +390,16 @@ class Client:
         limit: int | None = None,
         offset: int | None = None,
     ) -> Pagination[Chat]:
-        params: dict[str, str] = {}
-
-        if ids is not None:
-            params['ids'] = ','.join(map(str, ids))
-        if telegram_ids is not None:
-            params['telegram_ids'] = ','.join(map(str, telegram_ids))
-        if limit is not None:
-            params['limit'] = str(limit)
-        if offset is not None:
-            params['offset'] = str(offset)
-
         return await self._request(
-            hdrs.METH_GET, 'chats/', params=params, decoder=get_chats_decoder
+            hdrs.METH_GET,
+            'chats/',
+            params={
+                'ids': ids,
+                'telegram_ids': telegram_ids,
+                'limit': limit,
+                'offset': offset,
+            },
+            decoder=get_chats_decoder,
         )
 
     async def get_chat(self, id: int) -> Chat:
@@ -438,19 +423,16 @@ class Client:
         limit: int | None = None,
         offset: int | None = None,
     ) -> Pagination[User]:
-        params: dict[str, str] = {}
-
-        if ids is not None:
-            params['ids'] = ','.join(map(str, ids))
-        if telegram_ids is not None:
-            params['telegram_ids'] = ','.join(map(str, telegram_ids))
-        if limit is not None:
-            params['limit'] = str(limit)
-        if offset is not None:
-            params['offset'] = str(offset)
-
         return await self._request(
-            hdrs.METH_GET, 'users/', params=params, decoder=get_users_decoder
+            hdrs.METH_GET,
+            'users/',
+            params={
+                'ids': ids,
+                'telegram_ids': telegram_ids,
+                'limit': limit,
+                'offset': offset,
+            },
+            decoder=get_users_decoder,
         )
 
     async def get_user(self, id: int) -> User:
@@ -466,17 +448,10 @@ class Client:
     async def get_database_records(
         self, search: str | None = None, has_data_path: str | None = None
     ) -> list[DatabaseRecord]:
-        params: dict[str, str] = {}
-
-        if search is not None:
-            params['search'] = search
-        if has_data_path is not None:
-            params['has_data_path'] = has_data_path
-
         return await self._request(
             hdrs.METH_GET,
             'database-records/',
-            params=params,
+            params={'search': search, 'has_data_path': has_data_path},
             decoder=get_database_records_decoder,
         )
 
@@ -487,18 +462,11 @@ class Client:
         search: str | None = None,
         has_data_path: str | None = None,
     ) -> list[DatabaseRecord]:
-        params: dict[str, str] = {}
-
-        if search is not None:
-            params['search'] = search
-        if has_data_path is not None:
-            params['has_data_path'] = has_data_path
-
         return await self._request(
             hdrs.METH_PATCH if partial else hdrs.METH_PUT,
             'database-records/update-many/',
             data=data,
-            params=params,
+            params={'search': search, 'has_data_path': has_data_path},
             decoder=update_database_records_decoder,
         )
 

@@ -1,6 +1,6 @@
 from telegram import Update
 
-from service import Connection, ServiceObject
+from service import Connection
 
 from ..context import Context
 
@@ -11,11 +11,11 @@ if TYPE_CHECKING:
     from ..bot import Bot
 
 
-class BaseHandler[T: ServiceObject](ABC):
+class BaseConnectionFetcher(ABC):
     def __init__(self, bot: Bot) -> None:
         self._bot = bot
 
     @abstractmethod
-    async def handle(
-        self, update: Update, obj: T, context: Context
+    async def fetch(
+        self, update: Update, context: Context
     ) -> list[Connection] | None: ...

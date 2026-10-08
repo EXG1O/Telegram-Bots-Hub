@@ -7,7 +7,7 @@ if TYPE_CHECKING:
 
 class BackgroundTask(ABC):
     def __init__(self, bot: Bot) -> None:
-        self.bot = bot
+        self._bot = bot
 
     @abstractmethod
     async def __call__(self) -> None: ...

@@ -2,7 +2,7 @@ from telegram import Update
 
 from service import Connection, Randomizer
 
-from ..context import HandlerContext
+from ..context import Context
 from .base import BaseHandler
 
 import random
@@ -10,7 +10,7 @@ import random
 
 class RandomizerHandler(BaseHandler[Randomizer]):
     async def handle(
-        self, update: Update, randomizer: Randomizer, context: HandlerContext
+        self, update: Update, randomizer: Randomizer, context: Context
     ) -> list[Connection] | None:
         if not randomizer.source_connections:
             return None

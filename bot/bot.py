@@ -13,11 +13,10 @@ from service import Trigger
 import service
 
 from .background.manager import BackgroundTaskManager
-from .context import HandlerContext
+from .context import Context
 from .exceptions import NoTriggerSubscribersError
 from .handler import Handler
-from .storage import Storage
-from .storage.models import TriggerSubscriber
+from .storage import Storage, Subscriber, SubscriptionType
 from .utils.validation import are_service_subjects_allowed, is_service_subject_allowed
 
 from collections.abc import Awaitable, Iterable
@@ -57,8 +56,9 @@ class Bot:
 
     async def _is_update_allowed(self, update: Update) -> bool:
         chat: Chat | None = update.effective_chat
+        user: User | None = update.effective_user
 
-        if not chat:
+        if not (chat or user):
             return False
 
         service_bot, service_chat, service_user = await asyncio.gather(
@@ -74,7 +74,9 @@ class Bot:
                     is_forum=chat.is_forum,
                     is_direct_messages=chat.is_direct_messages,
                 )
-            ),
+            )
+            if chat
+            else asyncio.sleep(0),
             self.service.create_user(
                 data=service.CreateUser(
                     telegram_id=user.id,
@@ -85,23 +87,29 @@ class Bot:
                     is_premium=user.is_premium,
                 )
             )
-            if (user := update.effective_user)
+            if user
             else asyncio.sleep(0),
         )
 
-        if service_user:
-            await asyncio.create_task(
-                self.service.bind_users_to_chat(
-                    id=service_chat.id,
-                    data=[service.BindUserToChat(id=service_user.id)],
+        if service_chat:
+            if service_user:
+                await asyncio.create_task(
+                    self.service.bind_users_to_chat(
+                        id=service_chat.id,
+                        data=[service.BindUserToChat(id=service_user.id)],
+                    )
                 )
+
+            return are_service_subjects_allowed(
+                bot=service_bot,
+                chat=service_chat,
+                user=service_user,
             )
 
-        return are_service_subjects_allowed(
-            bot=service_bot,
-            chat=service_chat,
-            user=service_user,
-        )
+        if service_user:
+            return is_service_subject_allowed(bot=service_bot, subject=service_user)
+
+        return False
 
     async def feed_webhook_update(self, update: Update) -> None:
         if not await self._is_update_allowed(update):
@@ -150,10 +158,10 @@ class Bot:
                 is_premium=service_user.is_premium,
             )
 
-        context = HandlerContext(self, update)
+        context = Context(self, update)
         context.variables.store['WEBHOOK_PAYLOAD'] = payload
 
-        await self.handler.connection_handler.handle_many(
+        await self.handler._connection_handler.handle_many(
             update, trigger.source_connections, context
         )
 
@@ -181,19 +189,21 @@ class Bot:
             )
 
         async with self.storage.transaction() as storage_data:
-            raw_subscribers: set[TriggerSubscriber] | None = (
-                storage_data.expected_triggers.pop(trigger.id, None)
-            )
+            raw_subscribers: set[Subscriber] | None = storage_data.subscribers[
+                SubscriptionType.TRIGGER
+            ].pop(trigger.id, None)
 
             if not raw_subscribers:
                 raise NoTriggerSubscribersError(trigger.id)
 
-            subscribers: list[TriggerSubscriber] = list(raw_subscribers)
-            subscriber_batch: list[TriggerSubscriber] = subscribers[:limit]
+            subscribers: list[Subscriber] = list(raw_subscribers)
+            subscriber_batch: list[Subscriber] = subscribers[:limit]
             subscribers = subscribers[limit:]
 
             if subscribers:
-                storage_data.expected_triggers[trigger.id] = set(subscribers)
+                storage_data.subscribers[SubscriptionType.TRIGGER][trigger.id] = set(
+                    subscribers
+                )
 
         chat_id_user_id_pair: MultiDict[int | None] = MultiDict(
             [

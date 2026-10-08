@@ -2,16 +2,15 @@ from telegram import Update
 
 from service import Connection, TemporaryVariable
 
-from ..context import HandlerContext
-from ..storage import Storage
-from ..storage.models import UserStorageData
+from ..context import Context
+from ..storage import Storage, UserStorageData
 from ..utils.variables import replace_text_variables
 from .base import BaseHandler
 
 
 class TemporaryVariableHandler(BaseHandler[TemporaryVariable]):
     async def handle(
-        self, update: Update, variable: TemporaryVariable, context: HandlerContext
+        self, update: Update, variable: TemporaryVariable, context: Context
     ) -> list[Connection] | None:
         user_storage: Storage[UserStorageData] | None = context.user_storage
 

@@ -1,7 +1,6 @@
 from telegram import Chat, Update, User
 
-from .storage import Storage
-from .storage.models import ChatStorageData, UserStorageData
+from .storage import ChatStorageData, Storage, UserStorageData
 from .variables import Variables
 
 from typing import TYPE_CHECKING
@@ -11,7 +10,7 @@ if TYPE_CHECKING:
     from .bot import Bot
 
 
-class HandlerContext:
+class Context:
     def __init__(self, bot: Bot, update: Update) -> None:
         chat: Chat | None = update.effective_chat
         user: User | None = update.effective_user
@@ -32,7 +31,7 @@ class HandlerContext:
             user_storage=self.user_storage,
         )
 
-    def copy(self) -> HandlerContext:
-        context: HandlerContext = copy.copy(self)
+    def copy(self) -> Context:
+        context: Context = copy.copy(self)
         context.variables = self.variables.copy()
         return context

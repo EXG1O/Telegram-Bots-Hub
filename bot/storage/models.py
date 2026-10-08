@@ -1,15 +1,19 @@
 import msgspec
 
+from .enums import SubscriptionType
+
 from datetime import datetime
 
 
-class TriggerSubscriber(msgspec.Struct, frozen=True):
+class Subscriber(msgspec.Struct, frozen=True):
     chat_id: int
     user_id: int | None = None
 
 
 class BotStorageData(msgspec.Struct):
-    expected_triggers: dict[int, set[TriggerSubscriber]] = {}
+    subscribers: dict[SubscriptionType, dict[int, set[Subscriber]]] = msgspec.field(
+        default_factory=lambda: {SubscriptionType.TRIGGER: {}}
+    )
     completed_background_tasks: dict[int, datetime] = {}
 
 
@@ -18,5 +22,10 @@ class ChatStorageData(msgspec.Struct):
 
 
 class UserStorageData(msgspec.Struct):
+    subscriptions: dict[SubscriptionType, set[int]] = msgspec.field(
+        default_factory=lambda: {
+            SubscriptionType.TRIGGER: set(),
+            SubscriptionType.MESSAGE_KEYBOARD_BUTTON: set(),
+        }
+    )
     temporary_variables: dict[str, str] = {}
-    expected_trigger_id: int | None = None

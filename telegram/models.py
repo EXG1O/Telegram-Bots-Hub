@@ -101,12 +101,17 @@ class User(TelegramObject):
         return get_subject_link(self)
 
 
+class SuccessfulPayment(TelegramObject):
+    invoice_payload: str
+
+
 class Message(TelegramObject):
     message_id: int
     chat: Chat
     date: int
     user: User | None = msgspec.field(name='from', default=None)
     text: str | None = None
+    successful_payment: SuccessfulPayment | None = None
 
     @property
     def link(self) -> str | None:

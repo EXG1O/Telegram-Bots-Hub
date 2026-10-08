@@ -4,7 +4,7 @@ from core.enums import Mode
 from core.settings import MODE
 from service import Connection, ConnectionTargetObjectType, ServiceObject
 
-from ..context import HandlerContext
+from ..context import Context
 from .api_request import APIRequestHandler
 from .base import BaseHandler
 from .condition import ConditionHandler
@@ -17,6 +17,7 @@ from .timer import TimerHandler
 from .trigger import TriggerHandler
 
 from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 import asyncio
 import logging
@@ -27,66 +28,60 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+@dataclass(frozen=True, slots=True)
+class _Processor:
+    fetcher: Callable[[int], Awaitable[ServiceObject]]
+    handler: BaseHandler[Any]
+
+
 class ConnectionHandler(BaseHandler[Connection]):
     def __init__(self, bot: Bot) -> None:
         super().__init__(bot)
-        self.fetchers: dict[
-            ConnectionTargetObjectType, Callable[[int], Awaitable[ServiceObject]]
-        ] = {
-            ConnectionTargetObjectType.TRIGGER: (
-                lambda id: self.bot.service.get_trigger(id)
+        self._processors: dict[ConnectionTargetObjectType, _Processor] = {
+            ConnectionTargetObjectType.TRIGGER: _Processor(
+                fetcher=self._bot.service.get_trigger, handler=TriggerHandler(self._bot)
             ),
-            ConnectionTargetObjectType.MESSAGE: (
-                lambda id: self.bot.service.get_message(id)
+            ConnectionTargetObjectType.MESSAGE: _Processor(
+                fetcher=self._bot.service.get_message, handler=MessageHandler(self._bot)
             ),
-            ConnectionTargetObjectType.CONDITION: (
-                lambda id: self.bot.service.get_condition(id)
+            ConnectionTargetObjectType.CONDITION: _Processor(
+                fetcher=self._bot.service.get_condition,
+                handler=ConditionHandler(self._bot),
             ),
-            ConnectionTargetObjectType.API_REQUEST: (
-                lambda id: self.bot.service.get_api_request(id)
+            ConnectionTargetObjectType.API_REQUEST: _Processor(
+                fetcher=self._bot.service.get_api_request,
+                handler=APIRequestHandler(self._bot),
             ),
-            ConnectionTargetObjectType.DATABASE_OPERATION: (
-                lambda id: self.bot.service.get_database_operation(id)
+            ConnectionTargetObjectType.DATABASE_OPERATION: _Processor(
+                fetcher=self._bot.service.get_database_operation,
+                handler=DatabaseOperationHandler(self._bot),
             ),
-            ConnectionTargetObjectType.INVOICE: (
-                lambda id: self.bot.service.get_invoice(id)
+            ConnectionTargetObjectType.INVOICE: _Processor(
+                fetcher=self._bot.service.get_invoice, handler=InvoiceHandler(self._bot)
             ),
-            ConnectionTargetObjectType.TEMPORARY_VARIABLE: (
-                lambda id: self.bot.service.get_temporary_variable(id)
+            ConnectionTargetObjectType.TEMPORARY_VARIABLE: _Processor(
+                fetcher=self._bot.service.get_temporary_variable,
+                handler=TemporaryVariableHandler(self._bot),
             ),
-            ConnectionTargetObjectType.TIMER: (
-                lambda id: self.bot.service.get_timer(id)
+            ConnectionTargetObjectType.TIMER: _Processor(
+                fetcher=self._bot.service.get_timer, handler=TimerHandler(self._bot)
             ),
-            ConnectionTargetObjectType.RANDOMIZER: (
-                lambda id: self.bot.service.get_randomizer(id)
+            ConnectionTargetObjectType.RANDOMIZER: _Processor(
+                fetcher=self._bot.service.get_randomizer,
+                handler=RandomizerHandler(self._bot),
             ),
-        }
-        self.handlers: dict[ConnectionTargetObjectType, BaseHandler[Any]] = {
-            ConnectionTargetObjectType.TRIGGER: TriggerHandler(self.bot),
-            ConnectionTargetObjectType.MESSAGE: MessageHandler(self.bot),
-            ConnectionTargetObjectType.CONDITION: ConditionHandler(self.bot),
-            ConnectionTargetObjectType.API_REQUEST: APIRequestHandler(self.bot),
-            ConnectionTargetObjectType.DATABASE_OPERATION: DatabaseOperationHandler(
-                self.bot
-            ),
-            ConnectionTargetObjectType.INVOICE: InvoiceHandler(self.bot),
-            ConnectionTargetObjectType.TEMPORARY_VARIABLE: TemporaryVariableHandler(
-                self.bot
-            ),
-            ConnectionTargetObjectType.TIMER: TimerHandler(self.bot),
-            ConnectionTargetObjectType.RANDOMIZER: RandomizerHandler(self.bot),
         }
 
     async def handle(
-        self, update: Update, connection: Connection, context: HandlerContext
+        self, update: Update, connection: Connection, context: Context
     ) -> None:
         context = context.copy()
-        obj: ServiceObject = await self.fetchers[connection.target_object_type](
-            connection.target_object_id
+        processor: _Processor = self._processors[connection.target_object_type]
+
+        obj: ServiceObject = await processor.fetcher(connection.target_object_id)
+        connections: list[Connection] | None = await processor.handler.handle(
+            update, obj, context
         )
-        connections: list[Connection] | None = await self.handlers[
-            connection.target_object_type
-        ].handle(update, obj, context)
 
         if not connections:
             return
@@ -94,7 +89,7 @@ class ConnectionHandler(BaseHandler[Connection]):
         await self.handle_many(update, connections, context)
 
     async def handle_many(
-        self, update: Update, connections: list[Connection], context: HandlerContext
+        self, update: Update, connections: list[Connection], context: Context
     ) -> None:
         results: list[BaseException | None] = await asyncio.gather(
             *[self.handle(update, connection, context) for connection in connections],
