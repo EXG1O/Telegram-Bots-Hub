@@ -4,20 +4,29 @@ from core.enums import Mode
 from core.settings import MODE
 import service
 
-from ...context import HandlerContext
-from ...storage.models import BotStorageData
+from ...context import Context
+from ...handlers import ConnectionHandler
+from ...storage import BotStorageData
 from ...utils.validation import is_service_subject_allowed
 from .base import BackgroundTask
 
 from datetime import UTC, datetime, timedelta
 from itertools import batched
+from typing import TYPE_CHECKING
 import asyncio
 import logging
+
+if TYPE_CHECKING:
+    from ...bot import Bot
 
 logger = logging.getLogger(__name__)
 
 
 class ProcessServiceTasksTask(BackgroundTask):
+    def __init__(self, bot: Bot) -> None:
+        super().__init__(bot)
+        self._connection_handler = ConnectionHandler(self._bot)
+
     async def _handle_task(
         self,
         service_bot: service.Bot,
@@ -39,8 +48,8 @@ class ProcessServiceTasksTask(BackgroundTask):
             is_direct_messages=service_chat.is_direct_messages,
         )
 
-        await self.bot.handler.connection_handler.handle_many(
-            update, task.source_connections, HandlerContext(self.bot, update)
+        await self._connection_handler.handle_many(
+            update, task.source_connections, Context(self._bot, update)
         )
 
     def _should_skip_task(
@@ -68,12 +77,12 @@ class ProcessServiceTasksTask(BackgroundTask):
     async def __call__(self) -> None:
         tasks: list[
             service.BackgroundTask
-        ] = await self.bot.service.get_background_tasks(has_source_connections=True)
+        ] = await self._bot.service.get_background_tasks(has_source_connections=True)
 
         if not tasks:
             return
 
-        storage_data: BotStorageData = await self.bot.storage.get_data()
+        storage_data: BotStorageData = await self._bot.storage.get_data()
         last_completed_tasks: dict[int, datetime] = (
             storage_data.completed_background_tasks
         )
@@ -95,13 +104,13 @@ class ProcessServiceTasksTask(BackgroundTask):
                 active_task_ids.add(task.id)
 
         if not active_tasks:
-            async with self.bot.storage.transaction() as storage_data:
+            async with self._bot.storage.transaction() as storage_data:
                 storage_data.completed_background_tasks.update(completed_tasks)
             return
 
         service_bot, *_ = await asyncio.gather(
-            self.bot.service.get_bot(),
-            self.bot.service.update_background_tasks(
+            self._bot.service.get_bot(),
+            self._bot.service.update_background_tasks(
                 ids=active_task_ids,
                 data=service.UpdateBackgroundTasks(
                     status=service.BackgroundTaskStatus.RUNNING
@@ -117,7 +126,7 @@ class ProcessServiceTasksTask(BackgroundTask):
             while True:
                 pagination: service.Pagination[
                     service.Chat
-                ] = await self.bot.service.get_chats(limit=limit, offset=offset)
+                ] = await self._bot.service.get_chats(limit=limit, offset=offset)
                 service_chats: list[service.Chat] = pagination.results
 
                 if not service_chats:
@@ -158,10 +167,10 @@ class ProcessServiceTasksTask(BackgroundTask):
             for task in active_tasks:
                 completed_tasks[task.id] = current_datetime
 
-            async with self.bot.storage.transaction() as storage_data:
+            async with self._bot.storage.transaction() as storage_data:
                 storage_data.completed_background_tasks = completed_tasks
         finally:
-            await self.bot.service.update_background_tasks(
+            await self._bot.service.update_background_tasks(
                 ids=active_task_ids,
                 data=service.UpdateBackgroundTasks(
                     status=service.BackgroundTaskStatus.PENDING

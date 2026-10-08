@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 class BackgroundTaskManager:
     def __init__(self, bot: Bot) -> None:
-        self.bot = bot
+        self._bot = bot
         self._tasks: set[asyncio.Task[None]] = set()
 
     async def _run_task(
@@ -37,13 +37,13 @@ class BackgroundTaskManager:
             {
                 asyncio.create_task(
                     self._run_task(
-                        MonitorTokenTask(self.bot),
+                        MonitorTokenTask(self._bot),
                         BOT_BACKGROUND_MONITOR_TOKEN_INTERVAL,
                     )
                 ),
                 asyncio.create_task(
                     self._run_task(
-                        ProcessServiceTasksTask(self.bot),
+                        ProcessServiceTasksTask(self._bot),
                         BOT_BACKGROUND_PROCESS_SERVICE_TASKS_INTERVAL,
                     )
                 ),

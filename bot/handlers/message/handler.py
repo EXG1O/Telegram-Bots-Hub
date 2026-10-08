@@ -13,9 +13,8 @@ from telegram.types import KeyboardMarkup
 from service import Connection
 import service
 
-from ...context import HandlerContext
-from ...storage import Storage
-from ...storage.models import ChatStorageData
+from ...context import Context
+from ...storage import ChatStorageData, Storage, SubscriptionType
 from ...utils.html import process_html_text
 from ...utils.variables import replace_text_variables
 from ...variables import Variables
@@ -72,14 +71,14 @@ class MessageHandler(BaseHandler[service.Message]):
                     extras_attached = True
 
                 send_file: Callable[..., Awaitable[Message]] = getattr(
-                    self.bot.telegram, f'send_{type}'
+                    self._bot.telegram, f'send_{type}'
                 )
                 bot_messages.append(await send_file(**custom_kwargs))
                 continue
 
             for start_index in range(0, len(files), MediaGroupLimit.MAX_MEDIA_LENGTH):
                 bot_messages.extend(
-                    await self.bot.telegram.send_media_group(
+                    await self._bot.telegram.send_media_group(
                         media=files[
                             start_index : start_index + MediaGroupLimit.MAX_MEDIA_LENGTH
                         ],
@@ -89,7 +88,7 @@ class MessageHandler(BaseHandler[service.Message]):
 
         if text and not extras_attached:
             bot_messages.append(
-                await self.bot.telegram.send_message(
+                await self._bot.telegram.send_message(
                     text=text, reply_markup=keyboard, **kwargs
                 )
             )
@@ -141,7 +140,7 @@ class MessageHandler(BaseHandler[service.Message]):
 
             if trimmed_last_bot_message_ids := sorted_last_bot_message_ids[:-1]:
                 asyncio.create_task(
-                    self.bot.telegram.delete_messages(
+                    self._bot.telegram.delete_messages(
                         chat.id, trimmed_last_bot_message_ids
                     )
                 )
@@ -154,14 +153,14 @@ class MessageHandler(BaseHandler[service.Message]):
                     file: InputMedia = copy.copy(files[0])
                     file.caption = text
 
-                    edited_message = await self.bot.telegram.edit_message_media(
+                    edited_message = await self._bot.telegram.edit_message_media(
                         chat_id=chat.id,
                         message_id=message_id,
                         media=file,
                         reply_markup=keyboard,
                     )
                 elif text:
-                    edited_message = await self.bot.telegram.edit_message_text(
+                    edited_message = await self._bot.telegram.edit_message_text(
                         chat_id=chat.id,
                         message_id=message_id,
                         text=text,
@@ -175,7 +174,7 @@ class MessageHandler(BaseHandler[service.Message]):
 
         if text and not any(media_values):
             bot_messages.append(
-                await self.bot.telegram.send_message(
+                await self._bot.telegram.send_message(
                     chat_id=chat.id,
                     reply_parameters=reply_parameters,
                     text=text,
@@ -196,7 +195,7 @@ class MessageHandler(BaseHandler[service.Message]):
         return bot_messages, False
 
     async def handle(
-        self, update: Update, message: service.Message, context: HandlerContext
+        self, update: Update, message: service.Message, context: Context
     ) -> list[Connection] | None:
         chat: Chat | None = update.effective_chat
         chat_storage: Storage[ChatStorageData] | None = context.chat_storage
@@ -204,15 +203,15 @@ class MessageHandler(BaseHandler[service.Message]):
         if not (chat and chat_storage):
             return None
 
-        storage_data: ChatStorageData = await chat_storage.get_data()
-        old_last_bot_message_ids: list[int] = storage_data.last_bot_message_ids
+        chat_storage_data: ChatStorageData = await chat_storage.get_data()
+        old_last_bot_message_ids: list[int] = chat_storage_data.last_bot_message_ids
 
         reply_to_event_message_id: int | None = (
             event_message.message_id
             if (
                 (event_message := update.effective_message)
                 and (event_message_user := event_message and event_message.user)
-                and event_message_user.id != self.bot.telegram_id
+                and event_message_user.id != self._bot.telegram_id
             )
             else None
         )
@@ -231,16 +230,27 @@ class MessageHandler(BaseHandler[service.Message]):
             ]
 
         if (
+            (user_storage := context.user_storage)
+            and bot_messages
+            and (message_keyboard := message.keyboard)
+            and message_keyboard.type == service.MessageKeyboardType.DEFAULT
+        ):
+            async with user_storage.transaction() as storage_data:
+                storage_data.subscriptions[
+                    SubscriptionType.MESSAGE_KEYBOARD_BUTTON
+                ].update(button.id for button in message_keyboard.buttons)
+
+        if (
             not message.settings.send_as_new_message
             and not was_edited
             and old_last_bot_message_ids
         ):
             asyncio.create_task(
-                self.bot.telegram.delete_messages(chat.id, old_last_bot_message_ids)
+                self._bot.telegram.delete_messages(chat.id, old_last_bot_message_ids)
             )
         if message.settings.delete_user_message and reply_to_event_message_id:
             asyncio.create_task(
-                self.bot.telegram.delete_message(chat.id, reply_to_event_message_id)
+                self._bot.telegram.delete_message(chat.id, reply_to_event_message_id)
             )
 
         return message.source_connections

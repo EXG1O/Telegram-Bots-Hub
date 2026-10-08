@@ -12,7 +12,7 @@ from aiohttp import (
 from core.utils import build_user_agent
 from service import APIRequest, Connection
 
-from ...context import HandlerContext
+from ...context import Context
 from ...utils.variables import replace_data_variables
 from ..base import BaseHandler
 from .resolver import SafeResolver
@@ -21,7 +21,7 @@ from .utils import get_safe_headers, parse_response_body
 
 class APIRequestHandler(BaseHandler[APIRequest]):
     async def handle(
-        self, update: Update, api_request: APIRequest, context: HandlerContext
+        self, update: Update, api_request: APIRequest, context: Context
     ) -> list[Connection] | None:
         try:
             async with (
@@ -29,8 +29,8 @@ class APIRequestHandler(BaseHandler[APIRequest]):
                     connector=TCPConnector(resolver=SafeResolver()),
                     headers={
                         hdrs.USER_AGENT: build_user_agent(
-                            bot_service_id=self.bot.service_id,
-                            bot_telegram_id=self.bot.telegram_id,
+                            bot_service_id=self._bot.service_id,
+                            bot_telegram_id=self._bot.telegram_id,
                         )
                     },
                     skip_auto_headers=['User-Agent'],

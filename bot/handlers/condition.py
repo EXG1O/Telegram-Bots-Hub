@@ -7,7 +7,7 @@ from service import (
     Connection,
 )
 
-from ..context import HandlerContext
+from ..context import Context
 from ..utils.variables import replace_text_variables
 from .base import BaseHandler
 
@@ -16,7 +16,7 @@ import asyncio
 
 class ConditionHandler(BaseHandler[Condition]):
     async def handle(
-        self, update: Update, condition: Condition, context: HandlerContext
+        self, update: Update, condition: Condition, context: Context
     ) -> list[Connection] | None:
         result: bool | None = None
 

@@ -2,8 +2,7 @@ from telegram import Chat, Message, User
 
 from service import DatabaseRecord, Variable
 
-from .storage import Storage
-from .storage.models import UserStorageData
+from .storage import Storage, UserStorageData
 from .utils.html import process_html_text
 
 from typing import TYPE_CHECKING, Any
@@ -26,7 +25,7 @@ class Variables:
         message: Message | None = None,
         user_storage: Storage[UserStorageData] | None = None,
     ):
-        self.bot = bot
+        self._bot = bot
         self._user_storage = user_storage
 
         self.store: dict[str, Any] = {}
@@ -91,7 +90,7 @@ class Variables:
         name, _, new_path = path.partition('.')
         final_path: str | None = new_path or None
 
-        variables: list[Variable] = await self.bot.service.get_variables(name=name)
+        variables: list[Variable] = await self._bot.service.get_variables(name=name)
 
         if not variables:
             return None
@@ -118,7 +117,7 @@ class Variables:
         else:
             final_path = path
 
-        records: list[DatabaseRecord] = await self.bot.service.get_database_records(
+        records: list[DatabaseRecord] = await self._bot.service.get_database_records(
             search=search_value, has_data_path=final_path
         )
 

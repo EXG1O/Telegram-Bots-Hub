@@ -10,7 +10,7 @@ from service import (
     UpdateDatabaseRecords,
 )
 
-from ..context import HandlerContext
+from ..context import Context
 from ..utils.variables import replace_data_variables, replace_text_variables
 from .base import BaseHandler
 
@@ -23,7 +23,7 @@ class DatabaseOperationHandler(BaseHandler[DatabaseOperation]):
         self,
         update: Update,
         database_operation: DatabaseOperation,
-        context: HandlerContext,
+        context: Context,
     ) -> list[Connection] | None:
         create_operation: DatabaseCreateOperation | None = (
             database_operation.create_operation
@@ -33,7 +33,7 @@ class DatabaseOperationHandler(BaseHandler[DatabaseOperation]):
         )
 
         if create_operation:
-            await self.bot.service.create_database_record(
+            await self._bot.service.create_database_record(
                 CreateDatabaseRecord(
                     data=await replace_data_variables(
                         create_operation.data, context.variables, deserialize=True
@@ -54,7 +54,7 @@ class DatabaseOperationHandler(BaseHandler[DatabaseOperation]):
 
             records: list[
                 DatabaseRecord
-            ] = await self.bot.service.update_database_records(
+            ] = await self._bot.service.update_database_records(
                 UpdateDatabaseRecords(data=data),
                 partial=not update_operation.overwrite,
                 search=(
@@ -64,7 +64,7 @@ class DatabaseOperationHandler(BaseHandler[DatabaseOperation]):
             )
 
             if not records and update_operation.create_if_not_found:
-                await self.bot.service.create_database_record(
+                await self._bot.service.create_database_record(
                     CreateDatabaseRecord(data=data)
                 )
         else:

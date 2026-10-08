@@ -1,17 +1,18 @@
-from telegram import Message, Update
+from telegram import Update
 
-from service import Connection, Trigger
-import service
+from service import Connection
 
-from .context import HandlerContext
-from .handlers.connection import ConnectionHandler
-from .storage import Storage
-from .storage.models import UserStorageData
-from .utils.variables import replace_text_variables
-from .variables import Variables
+from .connection_fetchers import (
+    InvoiceConnectionFetcher,
+    MessageKeyboardButtonConnectionFetcher,
+    SubscriptionMessageKeyboardButtonConnectionFetcher,
+    SubscriptionTriggerConnectionFetcher,
+    TriggerConnectionFetcher,
+)
+from .connection_fetchers.base import BaseConnectionFetcher
+from .context import Context
+from .handlers import ConnectionHandler
 
-from collections.abc import Awaitable, Callable, Sequence
-from itertools import chain
 from typing import TYPE_CHECKING
 import asyncio
 import logging
@@ -19,217 +20,59 @@ import logging
 if TYPE_CHECKING:
     from .bot import Bot
 
-type ConnectionFetcher = Callable[
-    [Update, HandlerContext], Awaitable[list[Connection] | None]
-]
-
 logger = logging.getLogger(__name__)
 
 
 class Handler:
     def __init__(self, bot: Bot) -> None:
-        self.bot = bot
-        self.connection_handler = ConnectionHandler(self.bot)
-        self.connection_fetchers: Sequence[ConnectionFetcher] = [
-            self._get_wait_trigger_connections,
-            self._get_trigger_connections,
-            self._get_message_keyboard_button_connections,
+        self._bot = bot
+        self._connection_handler = ConnectionHandler(self._bot)
+        self._connection_fetchers: list[BaseConnectionFetcher] = [
+            TriggerConnectionFetcher(self._bot),
+            MessageKeyboardButtonConnectionFetcher(self._bot),
+            InvoiceConnectionFetcher(self._bot),
+        ]
+        self._subscription_connection_fetchers: list[BaseConnectionFetcher] = [
+            SubscriptionTriggerConnectionFetcher(self._bot),
+            SubscriptionMessageKeyboardButtonConnectionFetcher(self._bot),
         ]
 
-    async def _get_wait_trigger_connections(
-        self, update: Update, context: HandlerContext
-    ) -> list[Connection] | None:
-        message: Message | None = update.message
-        user_storage: Storage[UserStorageData] | None = context.user_storage
-
-        if not (
-            message
-            and (user := message.user)
-            and user.id != self.bot.telegram_id
-            and message.text
-            and user_storage
-        ):
-            return None
-
-        storage_data: UserStorageData = await user_storage.get_data()
-        expected_trigger_id: int | None = storage_data.expected_trigger_id
-
-        if not expected_trigger_id:
-            return None
-
-        trigger: Trigger = await self.bot.service.get_trigger(id=expected_trigger_id)
-
-        if TYPE_CHECKING:
-            connections: list[Connection]
-
-        if (
-            (trigger_command := trigger.command)
-            and message.text.startswith('/')
-            and len(message.text) > 1
-        ):
-            command, _, payload = message.text.removeprefix('/').partition(' ')
-
-            if not (
-                command == trigger_command.command
-                and (not trigger_command.payload or payload == trigger_command.payload)
-            ):
-                return None
-
-            connections = trigger.source_connections
-        elif (trigger_message := trigger.message) and (
-            not trigger_message.text
-            or (
-                message.text
-                == await replace_text_variables(trigger_message.text, context.variables)
-            )
-        ):
-            connections = trigger.source_connections
-        else:
-            return None
-
-        async with user_storage.transaction() as storage_data:
-            storage_data.expected_trigger_id = None
-
-        return connections
-
-    async def _get_command_triggers(self, message_text: str) -> list[Trigger] | None:
-        if (
-            not message_text.startswith('/')
-            or len(message_text) == 1
-            or len(message_text) > 32
-        ):
-            return None
-
-        command, _, payload = message_text.removeprefix('/').partition(' ')
-
-        return await self.bot.service.get_triggers(
-            command=command,
-            command_payload=payload or None,
-            has_command_payload=bool(payload),
-            has_source_connections=True,
-        )
-
-    async def _get_message_triggers(
-        self, message_text: str, variables: Variables
-    ) -> list[Trigger] | None:
-        (
-            triggers_with_message_text,
-            triggers_without_message_text,
-        ) = await asyncio.gather(
-            self.bot.service.get_triggers(
-                has_message=True,
-                has_message_text=True,
-                has_source_connections=True,
-                has_target_connections=False,
-            ),
-            self.bot.service.get_triggers(
-                has_message=True,
-                has_message_text=False,
-                has_source_connections=True,
-                has_target_connections=False,
-            ),
-        )
-
-        if not triggers_with_message_text and not triggers_without_message_text:
-            return None
-
-        trigger_message_texts: list[str] = await asyncio.gather(
-            *[
-                replace_text_variables(
-                    trigger.message.text,  # type: ignore [union-attr, arg-type]
-                    variables,
-                )
-                for trigger in triggers_with_message_text
-            ]
-        )
-
-        return [
-            trigger
-            for trigger, trigger_message_text in zip(
-                triggers_with_message_text, trigger_message_texts, strict=False
-            )
-            if message_text == trigger_message_text
-        ] + triggers_without_message_text
-
-    async def _get_trigger_connections(
-        self, update: Update, context: HandlerContext
-    ) -> list[Connection] | None:
-        message: Message | None = update.message
-
-        if not (
-            message
-            and (user := message.user)
-            and user.id != self.bot.telegram_id
-            and message.text
-        ):
-            return None
-
-        return list(
-            chain.from_iterable(
-                trigger.source_connections
-                for trigger in chain.from_iterable(
-                    filter(
-                        None,
-                        await asyncio.gather(
-                            self._get_command_triggers(message.text),
-                            self._get_message_triggers(message.text, context.variables),
-                        ),
-                    )
-                )
-            )
-        )
-
-    async def _get_message_keyboard_button_connections(
-        self, update: Update, context: HandlerContext
-    ) -> list[Connection] | None:
-        buttons: list[service.MessageKeyboardButton] = []
-
-        if (
-            (callback_query := update.callback_query)
-            and callback_query.data
-            and callback_query.data.isdigit()
-        ):
-            buttons = await self.bot.service.get_messages_keyboard_buttons(
-                id=int(callback_query.data)
-            )
-        elif (
-            (message := update.message)
-            and (message_text := message.text)
-            and len(message_text) <= 512
-        ):
-            buttons = await self.bot.service.get_messages_keyboard_buttons(
-                text=message_text
-            )
-        else:
-            return None
-
-        return list(
-            chain.from_iterable(button.source_connections for button in buttons)
-        )
-
     async def _run_fetcher(
-        self, fetcher: ConnectionFetcher, update: Update, context: HandlerContext
-    ) -> None:
+        self, fetcher: BaseConnectionFetcher, update: Update, context: Context
+    ) -> bool:
+        result: bool = False
         try:
-            connections: list[Connection] | None = await fetcher(update, context)
+            connections: list[Connection] | None = await fetcher.fetch(update, context)
             if connections:
-                await self.connection_handler.handle_many(update, connections, context)
+                result = True
+                await self._connection_handler.handle_many(update, connections, context)
         except Exception:
             logger.exception(
                 'Unexpected error processing fetcher %s for update (update_id=%d).',
-                fetcher.__name__,
+                fetcher.__class__.__name__,
                 update.update_id,
             )
+        return result
 
     async def handle_update(self, update: Update) -> None:
         if update.pre_checkout_query:
-            await self.bot.telegram.answer_pre_checkout_query(
+            await self._bot.telegram.answer_pre_checkout_query(
                 pre_checkout_query_id=update.pre_checkout_query.id, ok=True
             )
             return
 
-        context = HandlerContext(self.bot, update)
+        context = Context(self._bot, update)
 
-        async with asyncio.TaskGroup() as task_group:
-            for fetcher in self.connection_fetchers:
-                task_group.create_task(self._run_fetcher(fetcher, update, context))
+        if any(
+            await asyncio.gather(
+                *[
+                    self._run_fetcher(fetcher, update, context)
+                    for fetcher in self._subscription_connection_fetchers
+                ]
+            )
+        ):
+            return
+
+        async with asyncio.TaskGroup() as group:
+            for fetcher in self._connection_fetchers:
+                group.create_task(self._run_fetcher(fetcher, update, context))

@@ -1,33 +1,23 @@
-from telegram import Chat, Update, User
+from telegram import Update, User
 
 from service import Trigger
 
-from ..context import HandlerContext
-from ..storage import Storage
-from ..storage.models import TriggerSubscriber, UserStorageData
+from ..context import Context
+from ..storage import Subscriber, SubscriptionType
 from .base import BaseHandler
 
 
 class TriggerHandler(BaseHandler[Trigger]):
-    async def handle(
-        self, update: Update, trigger: Trigger, context: HandlerContext
-    ) -> None:
-        chat: Chat | None = update.effective_chat
-        user: User | None = update.effective_user
-
-        if chat and trigger.webhook is not None:
-            async with self.bot.storage.transaction() as storage_data:
-                storage_data.expected_triggers.setdefault(trigger.id, set()).add(
-                    TriggerSubscriber(
-                        chat_id=chat.id, user_id=user.id if user else None
-                    )
-                )
+    async def handle(self, update: Update, trigger: Trigger, context: Context) -> None:
+        if (chat := update.effective_chat) and trigger.webhook is not None:
+            user: User | None = update.effective_user
+            async with self._bot.storage.transaction() as storage_data:
+                storage_data.subscribers[SubscriptionType.TRIGGER].setdefault(
+                    trigger.id, set()
+                ).add(Subscriber(chat_id=chat.id, user_id=user.id if user else None))
             return
 
-        user_storage: Storage[UserStorageData] | None = context.user_storage
-
-        if not user_storage:
+        if user_storage := context.user_storage:
+            async with user_storage.transaction() as storage_data:
+                storage_data.subscriptions[SubscriptionType.TRIGGER].add(trigger.id)
             return
-
-        async with user_storage.transaction() as storage_data:
-            storage_data.expected_trigger_id = trigger.id
