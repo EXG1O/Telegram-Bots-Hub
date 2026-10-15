@@ -348,22 +348,29 @@ class Bot:
         )
 
     async def start(self) -> None:
-        self._me, *_ = await asyncio.gather(
-            self.telegram.get_me(),
-            self._set_menu_commands(),
-            self.telegram.set_webhook(
-                url=self.webhook_url,
-                max_connections=BOT_TELEGRAM_WEBHOOK_MAX_CONNECTIONS,
-                allowed_updates=[
-                    UpdateType.MESSAGE,
-                    UpdateType.CALLBACK_QUERY,
-                    UpdateType.PRE_CHECKOUT_QUERY,
-                ],
-                secret_token=TELEGRAM_TOKEN,
-            ),
-        )
-        await self.background_task_manager.start()
-        await self.service.assign_to_hub()
+        try:
+            self._me, *_ = await asyncio.gather(
+                self.telegram.get_me(),
+                self._set_menu_commands(),
+                self.telegram.set_webhook(
+                    url=self.webhook_url,
+                    max_connections=BOT_TELEGRAM_WEBHOOK_MAX_CONNECTIONS,
+                    allowed_updates=[
+                        UpdateType.MESSAGE,
+                        UpdateType.CALLBACK_QUERY,
+                        UpdateType.PRE_CHECKOUT_QUERY,
+                    ],
+                    secret_token=TELEGRAM_TOKEN,
+                ),
+            )
+            await self.background_task_manager.start()
+            await self.service.assign_to_hub()
+        except Exception:
+            logger.exception(
+                'Unexpected error during start of bot (service_id=%d).', self.service_id
+            )
+            await self.stop()
+            raise
 
     async def stop(self, retain_registry: bool = False) -> None:
         results: list[Any | Exception] = []

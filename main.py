@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 
-from api.exception_handlers import EXCEPTION_HANDLERS
-from api.router import router
+from api import EXCEPTION_HANDLERS, router
 from core.enums import Mode
 from core.settings import MODE
 

@@ -6,16 +6,13 @@ import msgspec
 
 from bot import Bot
 from core.storage import bots
+from core.utils import safe_call
 
 from .deps import ValidBot, verify_token
 from .exceptions import BotAlreadyEnabledError
 from .schemas import BotWebhookTrigger, RestartBotData, StartBotData, StartBotsItemData
 
 import asyncio
-import logging
-
-logger = logging.getLogger(__name__)
-
 
 router = APIRouter(dependencies=[Depends(verify_token)])
 
@@ -34,22 +31,21 @@ async def _start_bot(service_id: int, token: str, webhook_url: str) -> None:
     async with bot_start_semaphore:
         bot = Bot(service_id=service_id, token=token, webhook_url=webhook_url)
         bots[service_id] = bot
-
-        try:
-            await bot.start()
-        except Exception:
-            await bot.stop()
-            logger.exception(
-                'Unexpected error during start of bot (service_id=%d).', service_id
-            )
-            raise
+        await bot.start()
 
 
 async def _start_bots(data: list[StartBotsItemData]) -> None:
-    await asyncio.gather(
-        *[_start_bot(item.id, item.token, item.webhook_url) for item in data],
-        return_exceptions=True,
-    )
+    async with asyncio.TaskGroup() as group:
+        for item in data:
+            group.create_task(
+                safe_call(
+                    _start_bot(
+                        service_id=item.id,
+                        token=item.token,
+                        webhook_url=item.webhook_url,
+                    )
+                )
+            )
 
 
 @router.post('/bots/start/', status_code=status.HTTP_202_ACCEPTED)
@@ -59,36 +55,36 @@ async def start_bots(
     background_tasks.add_task(_start_bots, data)
 
 
-@router.post('/bots/{service_id}/start/', status_code=status.HTTP_202_ACCEPTED)
+@router.post('/bots/{service_id}/start/', status_code=status.HTTP_204_NO_CONTENT)
 async def start_bot(
     service_id: int, data: StartBotData, background_tasks: BackgroundTasks
 ) -> None:
     if service_id in bots:
         raise BotAlreadyEnabledError()
 
-    background_tasks.add_task(_start_bot, service_id, data.token, data.webhook_url)
+    await _start_bot(
+        service_id=service_id, token=data.token, webhook_url=data.webhook_url
+    )
 
 
-async def _restart_bot(bot: Bot, token: str, webhook_url: str) -> None:
-    await bot.stop(retain_registry=True)
-    await _start_bot(bot.service_id, token, webhook_url)
-
-
-@router.post('/bots/{service_id}/restart/', status_code=status.HTTP_202_ACCEPTED)
+@router.post('/bots/{service_id}/restart/', status_code=status.HTTP_204_NO_CONTENT)
 async def restart_bot(
     service_id: int,
     bot: ValidBot,
     data: RestartBotData,
     background_tasks: BackgroundTasks,
 ) -> None:
-    background_tasks.add_task(_restart_bot, bot, data.token, data.webhook_url)
+    await bot.stop(retain_registry=True)
+    await _start_bot(
+        service_id=bot.service_id, token=data.token, webhook_url=data.webhook_url
+    )
 
 
-@router.post('/bots/{service_id}/stop/', status_code=status.HTTP_202_ACCEPTED)
+@router.post('/bots/{service_id}/stop/', status_code=status.HTTP_204_NO_CONTENT)
 async def stop_bot(
     service_id: int, bot: ValidBot, background_tasks: BackgroundTasks
 ) -> None:
-    background_tasks.add_task(bot.stop)
+    await bot.stop()
 
 
 @router.post(
