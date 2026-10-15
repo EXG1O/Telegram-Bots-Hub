@@ -22,6 +22,7 @@ os.makedirs(LOGS_DIR, exist_ok=True)
 
 
 MODE: Final[Mode] = Mode(os.getenv('MODE', Mode.DEBUG).lower())
+PREMIUM: Final[bool] = os.getenv('PREMIUM', 'False') == 'True'
 
 REDIS_URL: Final[str] = os.environ['REDIS_URL']
 
