@@ -1,9 +1,9 @@
 from dotenv import load_dotenv
 from yarl import URL
 
+from ._profile_settings import ProfileSettings, build_profile_settings
 from .enums import Mode
 
-from datetime import timedelta
 from pathlib import Path
 from typing import Final
 import logging.config
@@ -44,13 +44,17 @@ TELEGRAM_GROUP_RATE_LIMIT: Final[float] = 20
 TELEGRAM_GROUP_RATE_PERIOD: Final[float] = 60
 
 
-BOT_TELEGRAM_WEBHOOK_MAX_CONNECTIONS: Final[int] = 10
+_profile_settings: ProfileSettings = build_profile_settings(mode=MODE, premium=PREMIUM)
+
+BOT_TELEGRAM_WEBHOOK_MAX_CONNECTIONS: Final[int] = _profile_settings[
+    'bot_telegram_webhook_max_connections'
+]
 
 BOT_BACKGROUND_MONITOR_TOKEN_INTERVAL: Final[float] = (
-    timedelta(minutes=1) if MODE == Mode.DEBUG else timedelta(days=1)
+    _profile_settings['bot_background_monitor_token_interval']
 ).total_seconds()
 BOT_BACKGROUND_PROCESS_SERVICE_TASKS_INTERVAL: Final[float] = (
-    timedelta(minutes=1) if MODE == Mode.DEBUG else timedelta(minutes=15)
+    _profile_settings['bot_background_process_service_tasks_interval']
 ).total_seconds()
 
 
@@ -91,7 +95,7 @@ logging.config.dictConfig(
         },
         'root': {
             'handlers': ['console', 'info_file', 'error_file'],
-            'level': 'DEBUG' if MODE == Mode.DEBUG else 'INFO',
+            'level': _profile_settings['log_level'],
         },
     }
 )
