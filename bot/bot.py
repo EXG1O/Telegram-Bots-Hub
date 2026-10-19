@@ -31,7 +31,12 @@ import time
 logger = logging.getLogger(__name__)
 
 
-COMMAND_CLEANUP_PATTERN: Final[re.Pattern[str]] = re.compile(f'[{string.punctuation}]')
+COMMAND_CLEANUP_PATTERN: Final[re.Pattern[str]] = re.compile(
+    f'[{string.punctuation.replace("_", "")}]'
+)
+COMMAND_WHITESPACE_PATTERN: Final[re.Pattern[str]] = re.compile(
+    f'[{string.whitespace}]'
+)
 
 
 class Bot:
@@ -339,7 +344,9 @@ class Bot:
         await self.telegram.set_my_commands(
             [
                 BotCommand(
-                    command=COMMAND_CLEANUP_PATTERN.sub('', trigger.command.command),
+                    command=COMMAND_WHITESPACE_PATTERN.sub(
+                        '_', COMMAND_CLEANUP_PATTERN.sub('', trigger.command.command)
+                    ),
                     description=trigger.command.description,
                 )
                 for trigger in triggers
@@ -349,9 +356,9 @@ class Bot:
 
     async def start(self) -> None:
         try:
-            self._me, *_ = await asyncio.gather(
+            self._me, set_menu_commands_result, *_ = await asyncio.gather(
                 self.telegram.get_me(),
-                self._set_menu_commands(),
+                safe_call(self._set_menu_commands()),
                 self.telegram.set_webhook(
                     url=self.webhook_url,
                     max_connections=BOT_TELEGRAM_WEBHOOK_MAX_CONNECTIONS,
@@ -371,6 +378,13 @@ class Bot:
             )
             await self.stop()
             raise
+        else:
+            if isinstance(set_menu_commands_result, Exception):
+                logger.warning(
+                    'Non-critical error during setting menu commands of bot (service_id=%d).',
+                    self.service_id,
+                    exc_info=set_menu_commands_result,
+                )
 
     async def stop(self, retain_registry: bool = False) -> None:
         results: list[Any | Exception] = []
