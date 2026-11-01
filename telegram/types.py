@@ -1,3 +1,3 @@
-from .models import InlineKeyboardMarkup, ReplyKeyboardMarkup
+from .models import InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove
 
-type KeyboardMarkup = ReplyKeyboardMarkup | InlineKeyboardMarkup
+type KeyboardMarkup = ReplyKeyboardMarkup | ReplyKeyboardRemove | InlineKeyboardMarkup

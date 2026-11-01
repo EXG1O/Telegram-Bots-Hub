@@ -24,6 +24,10 @@ class ReplyKeyboardMarkup(TelegramObject):
     resize_keyboard: bool
 
 
+class ReplyKeyboardRemove(TelegramObject):
+    remove_keyboard: bool
+
+
 class InlineKeyboardButton(TelegramObject):
     text: str
     style: KeyboardButtonStyle | None = None

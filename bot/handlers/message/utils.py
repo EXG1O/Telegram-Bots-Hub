@@ -6,6 +6,7 @@ from telegram import (
     KeyboardButton,
     KeyboardButtonStyle,
     ReplyKeyboardMarkup,
+    ReplyKeyboardRemove,
 )
 from telegram.types import KeyboardMarkup
 
@@ -35,15 +36,18 @@ def prepare_media[CM: service.MessageMedia](
 def build_keyboard(
     message_keyboard: service.MessageKeyboard,
 ) -> KeyboardMarkup | None:
-    keyboard: list[list[service.MessageKeyboardButton]] = []
+    if message_keyboard.type == service.MessageKeyboardType.PAYMENT:
+        return None
+
+    rows: list[list[service.MessageKeyboardButton]] = []
 
     for button in sorted(
         message_keyboard.buttons, key=lambda btn: (btn.row, btn.position)
     ):
-        while len(keyboard) <= button.row:
-            keyboard.append([])
+        while len(rows) <= button.row:
+            rows.append([])
 
-        keyboard[button.row].append(button)
+        rows[button.row].append(button)
 
     if message_keyboard.type == service.MessageKeyboardType.DEFAULT:
         return ReplyKeyboardMarkup(
@@ -60,26 +64,33 @@ def build_keyboard(
                     )
                     for button in row
                 ]
-                for row in keyboard
+                for row in rows
             ],
             resize_keyboard=True,
         )
 
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text=button.text,
-                    style=(
-                        KeyboardButtonStyle(button.style.value)
-                        if button.style != service.MessageKeyboardButtonStyle.DEFAULT
-                        else None
-                    ),
-                    url=button.url,
-                    callback_data=str(button.id),
-                )
-                for button in row
+    if message_keyboard.type == service.MessageKeyboardType.INLINE:
+        return InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text=button.text,
+                        style=(
+                            KeyboardButtonStyle(button.style.value)
+                            if button.style
+                            != service.MessageKeyboardButtonStyle.DEFAULT
+                            else None
+                        ),
+                        url=button.url,
+                        callback_data=str(button.id),
+                    )
+                    for button in row
+                ]
+                for row in rows
             ]
-            for row in keyboard
-        ]
-    )
+        )
+
+    if message_keyboard.type == service.MessageKeyboardType.REMOVAL:
+        return ReplyKeyboardRemove(remove_keyboard=True)
+
+    return None  # type: ignore [unreachable]
