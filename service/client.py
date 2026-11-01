@@ -9,6 +9,7 @@ from core.utils import build_user_agent
 
 from .enums import MessageKeyboardType
 from .models import (
+    Action,
     APIRequest,
     BackgroundTask,
     Bot,
@@ -72,6 +73,8 @@ get_timers_decoder = msgspec.json.Decoder(list[Timer])
 get_timer_decoder = msgspec.json.Decoder(Timer)
 get_randomizers_decoder = msgspec.json.Decoder(list[Randomizer])
 get_randomizer_decoder = msgspec.json.Decoder(Randomizer)
+get_actions_decoder = msgspec.json.Decoder(list[Action])
+get_action_decoder = msgspec.json.Decoder(Action)
 get_variables_decoder = msgspec.json.Decoder(list[Variable])
 get_variable_decoder = msgspec.json.Decoder(Variable)
 get_chats_decoder = msgspec.json.Decoder(Pagination[Chat])
@@ -367,6 +370,16 @@ class Client:
     async def get_randomizer(self, id: int) -> Randomizer:
         return await self._request(
             hdrs.METH_GET, f'randomizers/{id}/', decoder=get_randomizer_decoder
+        )
+
+    async def get_actions(self) -> list[Action]:
+        return await self._request(
+            hdrs.METH_GET, 'actions/', decoder=get_actions_decoder
+        )
+
+    async def get_action(self, id: int) -> Action:
+        return await self._request(
+            hdrs.METH_GET, f'actions/{id}/', decoder=get_action_decoder
         )
 
     async def get_variables(self, name: str | None = None) -> list[Variable]:

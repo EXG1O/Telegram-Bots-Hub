@@ -1,6 +1,7 @@
 import msgspec
 
 from .enums import (
+    ActionMessageDeletionTarget,
     APIRequestMethod,
     BackgroundTaskStatus,
     ChatType,
@@ -71,7 +72,6 @@ class Trigger(ServiceObject):
 
 class MessageSettings(ServiceObject):
     reply_to_user_message: bool
-    delete_user_message: bool
     send_as_new_message: bool
 
 
@@ -197,6 +197,16 @@ class Timer(ServiceObject):
 
 class Randomizer(ServiceObject):
     id: int
+    source_connections: list[Connection]
+
+
+class ActionMessageDeletion(ServiceObject):
+    target: ActionMessageDeletionTarget
+
+
+class Action(ServiceObject):
+    id: int
+    message_deletion: ActionMessageDeletion | None
     source_connections: list[Connection]
 
 

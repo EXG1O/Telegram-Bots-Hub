@@ -5,6 +5,7 @@ from core.settings import MODE
 from service import Connection, ConnectionTargetObjectType, ServiceObject
 
 from ..context import Context
+from .action import ActionHandler
 from .api_request import APIRequestHandler
 from .base import BaseHandler
 from .condition import ConditionHandler
@@ -69,6 +70,9 @@ class ConnectionHandler(BaseHandler[Connection]):
             ConnectionTargetObjectType.RANDOMIZER: _Processor(
                 fetcher=self._bot.service.get_randomizer,
                 handler=RandomizerHandler(self._bot),
+            ),
+            ConnectionTargetObjectType.ACTION: _Processor(
+                fetcher=self._bot.service.get_action, handler=ActionHandler(self._bot)
             ),
         }
 

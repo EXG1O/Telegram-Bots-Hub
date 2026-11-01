@@ -13,6 +13,7 @@ class ConnectionObjectType(StrEnum):
     TEMPORARY_VARIABLE = 'temporary_variable'
     TIMER = 'timer'
     RANDOMIZER = 'randomizer'
+    ACTION = 'action'
 
 
 class ConnectionSourceObjectType(StrEnum):
@@ -27,6 +28,7 @@ class ConnectionSourceObjectType(StrEnum):
     TEMPORARY_VARIABLE = ConnectionObjectType.TEMPORARY_VARIABLE
     TIMER = ConnectionObjectType.TIMER
     RANDOMIZER = ConnectionObjectType.RANDOMIZER
+    ACTION = ConnectionObjectType.ACTION
 
 
 class ConnectionTargetObjectType(StrEnum):
@@ -39,6 +41,7 @@ class ConnectionTargetObjectType(StrEnum):
     TEMPORARY_VARIABLE = ConnectionObjectType.TEMPORARY_VARIABLE
     TIMER = ConnectionObjectType.TIMER
     RANDOMIZER = ConnectionObjectType.RANDOMIZER
+    ACTION = ConnectionObjectType.ACTION
 
 
 class APIRequestMethod(StrEnum):
@@ -84,6 +87,11 @@ class ConditionPartNextPartOperator(StrEnum):
 class BackgroundTaskStatus(StrEnum):
     PENDING = 'pending'
     RUNNING = 'running'
+
+
+class ActionMessageDeletionTarget(StrEnum):
+    USER_MESSAGE = 'user_message'
+    LAST_BOT_MESSAGES = 'last_bot_messages'
 
 
 class ChatType(StrEnum):
