@@ -56,6 +56,7 @@ class MessageKeyboardType(StrEnum):
     DEFAULT = 'default'
     INLINE = 'inline'
     PAYMENT = 'payment'
+    REMOVAL = 'removal'
 
 
 class MessageKeyboardButtonStyle(StrEnum):
