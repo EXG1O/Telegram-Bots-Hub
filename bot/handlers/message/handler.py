@@ -248,9 +248,5 @@ class MessageHandler(BaseHandler[service.Message]):
             asyncio.create_task(
                 self._bot.telegram.delete_messages(chat.id, old_last_bot_message_ids)
             )
-        if message.settings.delete_user_message and reply_to_event_message_id:
-            asyncio.create_task(
-                self._bot.telegram.delete_message(chat.id, reply_to_event_message_id)
-            )
 
         return message.source_connections

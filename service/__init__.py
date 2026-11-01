@@ -1,5 +1,6 @@
 from .client import Client
 from .enums import (
+    ActionMessageDeletionTarget,
     APIRequestMethod,
     BackgroundTaskStatus,
     ChatType,
@@ -13,6 +14,8 @@ from .enums import (
     MessageKeyboardType,
 )
 from .models import (
+    Action,
+    ActionMessageDeletion,
     APIRequest,
     BackgroundTask,
     Bot,
@@ -89,6 +92,8 @@ __all__ = [
     'TemporaryVariable',
     'Timer',
     'Randomizer',
+    'ActionMessageDeletion',
+    'Action',
     'Variable',
     'Chat',
     'User',
@@ -103,6 +108,7 @@ __all__ = [
     'ConditionPartOperator',
     'ConditionPartNextPartOperator',
     'BackgroundTaskStatus',
+    'ActionMessageDeletionTarget',
     'ChatType',
     'CreateChat',
     'BindUserToChat',
