@@ -21,7 +21,10 @@ class KeyboardButton(TelegramObject):
 
 class ReplyKeyboardMarkup(TelegramObject):
     keyboard: list[list[KeyboardButton]]
-    resize_keyboard: bool
+    is_persistent: bool = False
+    resize_keyboard: bool = False
+    one_time_keyboard: bool = False
+    input_field_placeholder: str | None = None
 
 
 class ReplyKeyboardRemove(TelegramObject):

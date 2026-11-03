@@ -100,6 +100,10 @@ class MessageKeyboardButton(ServiceObject):
 
 class MessageKeyboard(ServiceObject):
     type: MessageKeyboardType
+    is_compact: bool
+    hide_on_click: bool
+    is_persistent: bool
+    input_placeholder: str | None
     buttons: list[MessageKeyboardButton]
 
 
