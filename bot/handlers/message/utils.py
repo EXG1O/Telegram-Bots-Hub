@@ -13,6 +13,9 @@ from telegram.types import KeyboardMarkup
 from core.settings import SERVICE_URL
 import service
 
+from ...utils.variables import replace_text_variables
+from ...variables import Variables
+
 from urllib.parse import unquote
 
 
@@ -33,8 +36,8 @@ def prepare_media[CM: service.MessageMedia](
     ]
 
 
-def build_keyboard(
-    message_keyboard: service.MessageKeyboard,
+async def build_keyboard(
+    message_keyboard: service.MessageKeyboard, variables: Variables
 ) -> KeyboardMarkup | None:
     if message_keyboard.type == service.MessageKeyboardType.PAYMENT:
         return None
@@ -66,7 +69,14 @@ def build_keyboard(
                 ]
                 for row in rows
             ],
-            resize_keyboard=True,
+            is_persistent=message_keyboard.is_persistent,
+            resize_keyboard=message_keyboard.is_compact,
+            one_time_keyboard=message_keyboard.hide_on_click,
+            input_field_placeholder=(
+                await replace_text_variables(text, variables)
+                if (text := message_keyboard.input_placeholder)
+                else None
+            ),
         )
 
     if message_keyboard.type == service.MessageKeyboardType.INLINE:

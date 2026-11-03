@@ -118,18 +118,19 @@ class MessageHandler(BaseHandler[service.Message]):
         }
         media_values: Iterable[list[InputMedia]] = media.values()
         files: list[InputMedia] = list(chain.from_iterable(media_values))
-        text: str | None = (
-            process_html_text(
-                await replace_text_variables(
-                    html.unescape(message.text).replace('\u00a0', ' '), variables
-                )
+        text, keyboard = await asyncio.gather(
+            replace_text_variables(
+                html.unescape(message.text).replace('\u00a0', ' '), variables
             )
             if message.text
-            else None
+            else asyncio.sleep(0),
+            build_keyboard(message.keyboard, variables)
+            if message.keyboard
+            else asyncio.sleep(0),
         )
-        keyboard: KeyboardMarkup | None = (
-            build_keyboard(message.keyboard) if message.keyboard else None
-        )
+
+        if text:
+            text = process_html_text(text)
 
         if (
             not message.settings.send_as_new_message
